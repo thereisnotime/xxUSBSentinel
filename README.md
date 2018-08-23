@@ -5,6 +5,20 @@ Windows anti-forensics USB monitoring tool. First you map a Key USB device - it 
 
 * WARNING: This software will not encrypt or protect your data/drives, its only aim is to help you improve your operation security.
  
+### Features ###
+- Monitor and log all types of USB devices connecting and disconnecting
+- Export logs to file
+- Resolve device VID:PID 
+- Map a device to be a Key USB device
+- Fast shutdown on Key USB device unplug
+- Control everything from GUI or from the traybar icon
+- Test mode option for practice
+
+### Screenshots ###
+![Screenshot1](/Screenshots/Screenshot_1.jpg?raw=true "Default mode.")
+![Screenshot2](/Screenshots/Screenshot_2.jpg?raw=true "Armed and ready.")
+![Screenshot3](/Screenshots/Screenshot_3.jpg?raw=true "Resolving a device.")
+![Screenshot4](/Screenshots/Screenshot_4.jpg?raw=true "Tray icon functionality.")
 
 ### Installation ###
 No installation is needed, download release or build it yourself.
