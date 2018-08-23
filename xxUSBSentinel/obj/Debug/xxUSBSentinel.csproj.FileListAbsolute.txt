@@ -1,0 +1,10 @@
+C:\P\C#\xxUSBSentinel\xxUSBSentinel\bin\Debug\xxUSBSentinel.exe
+C:\P\C#\xxUSBSentinel\xxUSBSentinel\bin\Debug\xxUSBSentinel.pdb
+C:\P\C#\xxUSBSentinel\xxUSBSentinel\obj\Debug\xxUSBSentinel.Form1.resources
+C:\P\C#\xxUSBSentinel\xxUSBSentinel\obj\Debug\xxUSBSentinel.Properties.Resources.resources
+C:\P\C#\xxUSBSentinel\xxUSBSentinel\obj\Debug\xxUSBSentinel.csproj.GenerateResource.cache
+C:\P\C#\xxUSBSentinel\xxUSBSentinel\obj\Debug\xxUSBSentinel.csproj.CoreCompileInputs.cache
+C:\P\C#\xxUSBSentinel\xxUSBSentinel\obj\Debug\xxUSBSentinel.exe
+C:\P\C#\xxUSBSentinel\xxUSBSentinel\obj\Debug\xxUSBSentinel.pdb
+C:\P\C#\xxUSBSentinel\xxUSBSentinel\bin\Debug\LibUsbDotNet.dll
+C:\P\C#\xxUSBSentinel\xxUSBSentinel\obj\Debug\xxUSBSentinel.csproj.CopyComplete
