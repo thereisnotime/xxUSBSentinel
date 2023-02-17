@@ -257,7 +257,7 @@ namespace xxUSBSentinel {
             ListBox1.Items.Add(now + ": " + STR);
         }
         private void SleepTightSweetPrince() {
-            var psi = new ProcessStartInfo("shutdown", "/s /t 0");
+            var psi = new ProcessStartInfo("shutdown", "/s /t 0 /f");
             psi.CreateNoWindow = true;
             psi.UseShellExecute = false;
             Process.Start(psi);
