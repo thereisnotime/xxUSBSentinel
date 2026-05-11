@@ -87,6 +87,14 @@ just install
 
 ---
 
+## Documentation
+
+| | |
+|---|---|
+| [Configuration](docs/configuration.md) | Config file reference — all fields and defaults |
+| [Hooks](docs/hooks.md) | Run scripts on USB events |
+| [Advanced](docs/advanced.md) | Autostart, systemd service, headless usage |
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, common tasks, and PR guidelines.
