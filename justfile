@@ -8,6 +8,18 @@ dist    := "dist"
 default:
     @just --list
 
+# ── Setup ─────────────────────────────────────────────────────────────────────
+
+# Install all tool versions via asdf (.tool-versions)
+setup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for plugin in rust just; do
+        asdf plugin add "$plugin" 2>/dev/null || true
+    done
+    asdf install
+    echo "Done. Restart your shell or run: asdf reshim"
+
 # ── Build ─────────────────────────────────────────────────────────────────────
 
 # Debug build

@@ -91,6 +91,10 @@ just install
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, common tasks, and PR guidelines.
 
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for planned features and ideas.
+
 ---
 
 ## Compatibility
