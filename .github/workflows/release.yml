@@ -12,6 +12,10 @@ jobs:
   build-linux:
     name: Build Linux binary
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
 
@@ -39,16 +43,35 @@ jobs:
           cp README.md LICENSE "dist/${PKG}/" 2>/dev/null || true
           tar -czf "dist/${PKG}.tar.gz" -C dist "${PKG}"
           echo "ASSET=dist/${PKG}.tar.gz" >> $GITHUB_ENV
+          echo "ASSET_NAME=${PKG}.tar.gz" >> $GITHUB_ENV
+
+      - name: Sign with cosign (keyless)
+        uses: sigstore/cosign-installer@v3
+      - run: |
+          cosign sign-blob --yes \
+            --bundle "${ASSET_NAME}.bundle" \
+            "${{ env.ASSET }}"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ env.ASSET }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-binary
-          path: ${{ env.ASSET }}
+          path: |
+            ${{ env.ASSET }}
+            ${{ env.ASSET_NAME }}.bundle
 
   build-windows:
     name: Build Windows binary
     runs-on: windows-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -67,12 +90,28 @@ jobs:
           Copy-Item "README.md","LICENSE" "dist\$PKG\" -ErrorAction SilentlyContinue
           Compress-Archive -Path "dist\$PKG" -DestinationPath "dist\$PKG.zip"
           echo "ASSET=dist/$PKG.zip" >> $env:GITHUB_ENV
+          echo "ASSET_NAME=$PKG.zip" >> $env:GITHUB_ENV
+
+      - name: Sign with cosign (keyless)
+        uses: sigstore/cosign-installer@v3
+      - shell: bash
+        run: |
+          cosign sign-blob --yes \
+            --bundle "${ASSET_NAME}.bundle" \
+            "${{ env.ASSET }}"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ env.ASSET }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-binary
-          path: ${{ env.ASSET }}
+          path: |
+            ${{ env.ASSET }}
+            ${{ env.ASSET_NAME }}.bundle
 
   release:
     name: Create GitHub release

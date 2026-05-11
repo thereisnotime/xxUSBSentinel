@@ -42,6 +42,22 @@ Pushing a `v*` tag triggers the CI release workflow, which builds Linux and Wind
 - Match the commit message style in the existing log.
 - Do not add `Co-Authored-By` trailers.
 
+## Verifying release artifacts
+
+Each release artifact is signed with [cosign](https://github.com/sigstore/cosign) (keyless, via GitHub OIDC) and has a SLSA provenance attestation.
+
+Verify the cosign signature:
+```sh
+cosign verify-blob \
+  --bundle <artifact>.bundle \
+  <artifact>
+```
+
+Verify the GitHub provenance attestation:
+```sh
+gh attestation verify <artifact> --repo thereisnotime/xxUSBSentinel
+```
+
 ## Contributors
 
 See [CONTRIBUTORS](CONTRIBUTORS).
