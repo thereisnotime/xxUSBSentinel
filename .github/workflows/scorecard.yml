@@ -26,6 +26,7 @@ jobs:
           results_file: results.sarif
           results_format: sarif
           publish_results: true
+          repo_token: ${{ secrets.SCORECARD_TOKEN }}
 
       - uses: actions/upload-artifact@v4
         with:
