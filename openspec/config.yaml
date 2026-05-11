@@ -1,0 +1,21 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Rust 2021, eframe/egui 0.34, rusb 0.9
+  Platforms: Linux (X11/Wayland) and Windows 10/11
+  We use conventional commits (feat, fix, docs, chore, refactor, test, ci)
+  Task runner: just (see justfile for all targets)
+  Domain: USB kill-switch desktop application — maps a USB device as a key;
+  immediate forced shutdown when the key is removed while armed.
+  Security-focused: LUKS/VeraCrypt companion tool.
+  Single Rust crate, no workspace. All modules in src/.
+  GUI: egui SentinelApp (app.rs), system tray (tray.rs), USB monitor thread (usb.rs).
+  Config persisted as TOML via serde. SharedState bridges USB thread and GUI thread.
+
+rules:
+  proposal:
+    - Keep proposals concise — one problem, one solution
+    - Note any Critical Invariants from CONTEXT.md that the change might affect
+  tasks:
+    - Each task should be completable in one sitting
+    - Security-sensitive changes must include a threat model note
