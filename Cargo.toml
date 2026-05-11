@@ -1,0 +1,19 @@
+[package]
+name = "xxusbsentinel"
+version = "2.0.0"
+edition = "2021"
+description = "USB kill switch — shuts down the PC when a mapped USB device is removed"
+
+[dependencies]
+eframe = "0.34"
+egui = "0.34"
+egui_extras = { version = "0.34", features = ["image"] }
+tray-icon = "0.21"
+arboard = "3.6"
+rusb = "0.9"
+chrono = { version = "0.4", features = ["clock"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+rfd = "0.15"
+
+# Linux system tray requires libgtk-3-dev + libayatana-appindicator3-dev (or libappindicator3-dev)
+# USB monitoring requires libusb-1.0-dev (build) and libusb-1.0-0 (runtime)
