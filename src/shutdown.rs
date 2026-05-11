@@ -64,6 +64,23 @@ pub fn notify(summary: &str, body: &str) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn can_shutdown_returns_without_panic() {
+        // Just verify it doesn't panic; result depends on the environment.
+        let _ = can_shutdown();
+    }
+
+    #[test]
+    fn notify_does_not_panic() {
+        // Spawns notify-send / PowerShell which will fail silently outside a desktop session.
+        notify("test summary", "test body");
+    }
+}
+
 pub fn execute() {
     #[cfg(target_os = "windows")]
     {

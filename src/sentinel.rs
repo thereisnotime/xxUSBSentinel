@@ -50,6 +50,51 @@ pub struct UsbDevice {
     pub name: String,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Config;
+
+    #[test]
+    fn shared_state_mirrors_config() {
+        let mut cfg = Config::default();
+        cfg.test_mode = true;
+        cfg.key_device = "046D:C52B".into();
+        cfg.shutdown_on_close = true;
+        cfg.wipe_swap = true;
+        cfg.wipe_hiberfil = false;
+        cfg.fake_bsod = true;
+        cfg.bsod_style = "linux".into();
+
+        let state = SharedState::new_from_config(&cfg);
+        let s = state.lock().unwrap();
+
+        assert!(!s.armed);
+        assert!(!s.waiting);
+        assert!(s.test_mode);
+        assert_eq!(s.key_device, "046D:C52B");
+        assert!(s.shutdown_on_close);
+        assert!(s.wipe_swap);
+        assert!(!s.wipe_hiberfil);
+        assert!(s.fake_bsod);
+        assert_eq!(s.bsod_style, "linux");
+    }
+
+    #[test]
+    fn log_entry_stores_fields() {
+        let e = LogEntry { time: "12:00".into(), text: "Device connected".into() };
+        assert_eq!(e.time, "12:00");
+        assert_eq!(e.text, "Device connected");
+    }
+
+    #[test]
+    fn usb_device_stores_fields() {
+        let d = UsbDevice { vid_pid: "046D:C52B".into(), name: "Logitech Receiver".into() };
+        assert_eq!(d.vid_pid, "046D:C52B");
+        assert_eq!(d.name, "Logitech Receiver");
+    }
+}
+
 /// Events sent from the USB monitor thread to the GUI.
 pub enum GuiEvent {
     DeviceConnected(UsbDevice),
