@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [rust-rewrite, main, master]
+  pull_request:
+    branches: [rust-rewrite, main, master]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check-linux:
+    name: Check / Lint (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libusb-1.0-0-dev pkg-config libxdo-dev \
+            libgtk-3-dev libxkbcommon-dev libgles2-mesa-dev \
+            libwayland-dev libxrandr-dev libxi-dev libxcursor-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo fmt -- --check
+      - run: cargo check
+      - run: cargo clippy -- -D warnings
+
+  build-linux:
+    name: Build (Linux)
+    runs-on: ubuntu-latest
+    needs: check-linux
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libusb-1.0-0-dev pkg-config libxdo-dev \
+            libgtk-3-dev libxkbcommon-dev libgles2-mesa-dev \
+            libwayland-dev libxrandr-dev libxi-dev libxcursor-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo build --release
+      - run: ls -lh target/release/xxusbsentinel
+
+  build-windows:
+    name: Build (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release
+      - run: dir target\release\xxusbsentinel.exe
