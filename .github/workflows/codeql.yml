@@ -30,6 +30,8 @@ jobs:
             libwayland-dev libxrandr-dev libxi-dev libxcursor-dev
 
       - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+        with:
+          toolchain: stable
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@7fd177fa680c9881b53cdab4d346d32574c9f7f4 # v3
