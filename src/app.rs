@@ -271,9 +271,9 @@ impl eframe::App for SentinelApp {
                 ui.horizontal(|ui| {
                     ui.add_space(8.0);
                     let src = if armed {
-                        egui::include_image!("../xxUSBSentinel/Resources/guard-on.png")
+                        egui::include_image!("../resources/guard-on.png")
                     } else {
-                        egui::include_image!("../xxUSBSentinel/Resources/guard-off.png")
+                        egui::include_image!("../resources/guard-off.png")
                     };
                     ui.add(egui::Image::new(src).fit_to_exact_size(egui::vec2(ICON_W, ICON_W)));
                     ui.add_space(12.0);

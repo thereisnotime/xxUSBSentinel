@@ -4,8 +4,8 @@
 
 use std::sync::{Arc, Mutex};
 
-const ICON_OFF: &[u8] = include_bytes!("../xxUSBSentinel/Resources/guard-off.png");
-const ICON_ON:  &[u8] = include_bytes!("../xxUSBSentinel/Resources/guard-on.png");
+const ICON_OFF: &[u8] = include_bytes!("../resources/guard-off.png");
+const ICON_ON:  &[u8] = include_bytes!("../resources/guard-on.png");
 
 pub enum TrayEvent {
     ShowWindow,

@@ -52,9 +52,11 @@ pub fn notify(summary: &str, body: &str) {
 pub fn execute() {
     #[cfg(target_os = "windows")]
     {
-        let _ = Command::new("shutdown")
-            .args(["/s", "/t", "0", "/f"])
-            .spawn();
+        // /p = power off immediately (no dialog, no delay).
+        // Fall back to /s /t 0 /f if /p is unavailable (pre-Win8).
+        if Command::new("shutdown").args(["/p", "/f"]).spawn().is_err() {
+            let _ = Command::new("shutdown").args(["/s", "/t", "0", "/f"]).spawn();
+        }
     }
 
     #[cfg(not(target_os = "windows"))]
