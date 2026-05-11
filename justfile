@@ -71,6 +71,16 @@ test:
 # Full CI gate: fmt-check + clippy + test
 ci: fmt-check clippy test
 
+# Lint GitHub Actions workflow files (requires actionlint in PATH or ./actionlint)
+actionlint:
+    #!/usr/bin/env bash
+    bin="$(command -v actionlint 2>/dev/null || echo ./actionlint)"
+    if [[ ! -x "$bin" ]]; then
+        echo "actionlint not found; run: curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash"
+        exit 1
+    fi
+    "$bin" .github/workflows/*.yml
+
 # ── Maintenance ───────────────────────────────────────────────────────────────
 
 # Remove build artefacts

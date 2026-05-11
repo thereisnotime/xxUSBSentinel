@@ -82,14 +82,20 @@ mod tests {
 
     #[test]
     fn log_entry_stores_fields() {
-        let e = LogEntry { time: "12:00".into(), text: "Device connected".into() };
+        let e = LogEntry {
+            time: "12:00".into(),
+            text: "Device connected".into(),
+        };
         assert_eq!(e.time, "12:00");
         assert_eq!(e.text, "Device connected");
     }
 
     #[test]
     fn usb_device_stores_fields() {
-        let d = UsbDevice { vid_pid: "046D:C52B".into(), name: "Logitech Receiver".into() };
+        let d = UsbDevice {
+            vid_pid: "046D:C52B".into(),
+            name: "Logitech Receiver".into(),
+        };
         assert_eq!(d.vid_pid, "046D:C52B");
         assert_eq!(d.name, "Logitech Receiver");
     }
