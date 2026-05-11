@@ -88,6 +88,110 @@ impl Config {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hook_default_values() {
+        let h = Hook::default();
+        assert_eq!(h.device, "*");
+        assert_eq!(h.event, "connected");
+        assert!(h.script.is_empty());
+        assert!(h.enabled);
+    }
+
+    #[test]
+    fn hook_enabled_defaults_true_on_deserialise() {
+        let toml = r#"device = "*"
+event = "connected"
+script = "/usr/bin/notify"
+"#;
+        let h: Hook = toml::from_str(toml).unwrap();
+        assert!(h.enabled);
+    }
+
+    #[test]
+    fn config_default_values() {
+        let cfg = Config::default();
+        assert!(!cfg.test_mode);
+        assert!(!cfg.shutdown_on_close);
+        assert!(!cfg.autostart);
+        assert!(!cfg.wipe_swap);
+        assert!(!cfg.wipe_hiberfil);
+        assert!(!cfg.fake_bsod);
+        assert!(cfg.hooks.is_empty());
+        assert!(cfg.device_comments.is_empty());
+    }
+
+    #[test]
+    fn config_bsod_style_platform_default() {
+        // serde defaults are applied on deserialisation, not via Default::default()
+        let cfg: Config = toml::from_str("").unwrap();
+        if cfg!(target_os = "linux") {
+            assert_eq!(cfg.bsod_style, "linux");
+        } else {
+            assert_eq!(cfg.bsod_style, "win10");
+        }
+    }
+
+    #[test]
+    fn config_roundtrip_toml() {
+        let mut cfg = Config::default();
+        cfg.test_mode = true;
+        cfg.key_device = "046D:C52B".into();
+        cfg.hooks.push(Hook {
+            device: "046D:C52B".into(),
+            event: "disconnected".into(),
+            script: "/usr/bin/lock".into(),
+            enabled: true,
+        });
+
+        let serialised = toml::to_string_pretty(&cfg).unwrap();
+        let deserialised: Config = toml::from_str(&serialised).unwrap();
+
+        assert!(deserialised.test_mode);
+        assert_eq!(deserialised.key_device, "046D:C52B");
+        assert_eq!(deserialised.hooks.len(), 1);
+        assert_eq!(deserialised.hooks[0].event, "disconnected");
+    }
+
+    #[test]
+    fn config_save_and_load() {
+        let dir = std::env::temp_dir().join(format!("xxusb_test_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+
+        let mut cfg = Config::default();
+        cfg.key_device = "DEAD:BEEF".into();
+        cfg.wipe_swap = true;
+
+        let text = toml::to_string_pretty(&cfg).unwrap();
+        std::fs::write(&path, &text).unwrap();
+
+        let loaded: Config = toml::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(loaded.key_device, "DEAD:BEEF");
+        assert!(loaded.wipe_swap);
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn device_comments_roundtrip() {
+        let toml = r#"
+[device_comments]
+"046D:C52B" = "My Logitech dongle"
+"1234:5678" = "Test device"
+"#;
+        let cfg: Config = toml::from_str(toml).unwrap();
+        assert_eq!(
+            cfg.device_comments.get("046D:C52B").unwrap(),
+            "My Logitech dongle"
+        );
+        assert_eq!(cfg.device_comments.len(), 2);
+    }
+}
+
 fn config_path() -> PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))

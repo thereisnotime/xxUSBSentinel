@@ -145,6 +145,25 @@ fn vid_pid_str(vid: u16, pid: u16) -> String {
     format!("{:04X}:{:04X}", vid, pid)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn vid_pid_str_pads_to_four_hex_digits() {
+        assert_eq!(vid_pid_str(0x046D, 0xC52B), "046D:C52B");
+        assert_eq!(vid_pid_str(0x0001, 0x0001), "0001:0001");
+        assert_eq!(vid_pid_str(0xFFFF, 0xFFFF), "FFFF:FFFF");
+        assert_eq!(vid_pid_str(0x0000, 0x0000), "0000:0000");
+    }
+
+    #[test]
+    fn vid_pid_str_is_uppercase() {
+        let s = vid_pid_str(0xabcd, 0xef01);
+        assert_eq!(s, "ABCD:EF01");
+    }
+}
+
 enum Action {
     None,
     Mapped(String),
