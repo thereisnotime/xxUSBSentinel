@@ -87,21 +87,9 @@ just install
 
 ---
 
-## Development
+## Contributing
 
-```
-just build        # debug build
-just check        # type-check only
-just clippy       # lint
-just fmt          # format
-just test         # run tests
-just ci           # fmt-check + clippy + test
-just clean        # remove build artefacts
-just bump-patch   # bump x.y.Z
-just bump-minor   # bump x.Y.0
-just bump-major   # bump X.0.0
-just dist-linux   # package as .tar.gz
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, common tasks, and PR guidelines.
 
 ---
 
