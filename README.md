@@ -1,6 +1,6 @@
 # xxUSBSentinel
 
-USB kill-switch for Linux and Windows. Map any USB device as a key — when it is removed while the sentinel is armed, the machine shuts down immediately. Designed to make recovering encrypted drive keys as hard as possible if someone physically seizes your machine.
+USB kill-switch for Linux and Windows. Map any USB device as a key. When it is removed while the sentinel is armed, the machine shuts down immediately. Designed to make recovering encrypted drive keys as hard as possible if someone physically seizes your machine.
 
 > **Warning:** This tool does not encrypt your data. Use full-disk encryption (LUKS, VeraCrypt, BitLocker) alongside it.
 
@@ -17,18 +17,18 @@ USB kill-switch for Linux and Windows. Map any USB device as a key — when it i
 
 ## Features
 
-- Monitors all USB connect/disconnect events in real time
-- Maps any USB device as the kill-switch key by VID:PID
-- Immediate forced shutdown on key removal (Linux: systemctl poweroff; Windows: shutdown /s /t 0 /f)
-- Test mode — fires a desktop notification instead of a real shutdown so you can verify your setup safely
-- Shutdown on close — closing the window while armed triggers shutdown instead of minimising to tray
-- Persistent config — key device, test mode, shutdown on close, and per-device comments survive restarts
-- Per-device comments stored in config
-- Event log with timestamps, colour-coded by event type, selectable text, copy and export
-- System tray icon with arm/disarm, test mode, and shutdown on close toggles
-- Desktop notifications on trigger (Linux: notify-send; Windows: WScript.Shell popup)
-- Autostart on login (Linux: XDG autostart; Windows: registry Run key)
-- Permissions check — warns if the current user cannot shut down the system
+- Monitor and log all USB connect and disconnect events in real time
+- Map any USB device as the kill-switch key by VID:PID
+- Immediate forced shutdown on key removal
+- Test mode for safe dry-runs without triggering a real shutdown
+- Shutdown on close option
+- Desktop notifications on trigger
+- Per-device comments
+- Event log with timestamps, copy and export
+- System tray icon with arm/disarm and toggle controls
+- Autostart on login
+- Persistent config across restarts
+- Permissions warning if the current user cannot shut down
 
 ---
 
@@ -70,16 +70,6 @@ just install
 
 ---
 
-## Usage
-
-```
-just run          # debug build
-just run-release  # release build
-just install      # install to ~/.local/bin
-```
-
----
-
 ## Development
 
 ```
@@ -109,4 +99,4 @@ just dist-linux   # package as .tar.gz
 
 ## License
 
-[PolyForm Noncommercial License 1.0.0](LICENSE) — free for personal and non-commercial use. Commercial use is prohibited.
+[PolyForm Noncommercial License 1.0.0](LICENSE) - free for personal and non-commercial use. Commercial use is prohibited.
