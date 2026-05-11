@@ -1,5 +1,7 @@
 # Advanced Usage
 
+![Advanced Settings](../Screenshots/Screenshot_3.jpg)
+
 ---
 
 ## Running headless (no GUI)

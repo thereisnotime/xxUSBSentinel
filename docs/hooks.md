@@ -65,9 +65,34 @@ enabled = true
 
 ---
 
+## Script arguments
+
+Scripts receive three positional arguments:
+
+```
+<script> <VID:PID> <device-name> <event-type>
+```
+
+| Argument | Example | Description |
+|----------|---------|-------------|
+| `$1` | `1532:0A24` | VID:PID of the device |
+| `$2` | `Razer Keyboard` | Human-readable device name (may be empty) |
+| `$3` | `connected` | `connected`, `disconnected`, or `triggered` |
+
+Example script:
+
+```sh
+#!/bin/sh
+# /usr/local/bin/usb-hook.sh
+VID_PID="$1"
+NAME="$2"
+EVENT="$3"
+notify-send "USB $EVENT" "$NAME ($VID_PID)"
+```
+
 ## Script environment
 
-Scripts are executed directly (no shell wrapper). The script must be executable (`chmod +x`). No environment variables are injected — if you need the VID:PID or other context, write a wrapper script that reads them from the config file or the system.
+Scripts are executed directly (no shell wrapper). The script must be executable (`chmod +x`).
 
 Scripts run asynchronously and their output is discarded. Failures are silently ignored — the shutdown sequence does not wait for hook scripts to complete.
 

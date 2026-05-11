@@ -51,8 +51,11 @@ USB kill-switch for Linux and Windows. Map any USB device as a key. When it is r
 
 ## Screenshots
 
-![Default](Screenshots/Screenshot_1.jpg)
-![Armed](Screenshots/Screenshot_2.jpg)
+| Main window (armed) | System tray |
+|---|---|
+| ![Armed with context menu](Screenshots/Screenshot_1.jpg) | ![Tray menu](Screenshots/Screenshot_2.jpg) |
+
+![Advanced settings](Screenshots/Screenshot_3.jpg)
 
 ---
 
