@@ -61,32 +61,40 @@ USB kill-switch for Linux and Windows. Map any USB device as a key. When it is r
 
 ## Installation
 
-### Pre-built binary
+### Linux — build from source
 
-Download the latest release from the [Releases](https://github.com/thereisnotime/xxUSBSentinel/releases) page and run the binary. No installation needed.
-
-### Build from source
-
-**Requirements (Linux):**
 ```sh
-sudo apt install libusb-1.0-0-dev libxdo-dev pkg-config
+# Install system dependencies (Debian/Ubuntu)
+sudo apt install libusb-1.0-0-dev libxdo-dev pkg-config \
+  libgtk-3-dev libxkbcommon-dev libgles2-mesa-dev \
+  libwayland-dev libxrandr-dev libxi-dev libxcursor-dev
+
+# Clone and install
+git clone git@github.com:thereisnotime/xxUSBSentinel.git
+cd xxUSBSentinel
+just install   # builds release and copies to ~/.local/bin
 ```
 
-**Build:**
+### Linux — download latest binary
+
 ```sh
-just release
-# binary at target/release/xxusbsentinel
+curl -fsSL https://github.com/thereisnotime/xxUSBSentinel/releases/latest/download/xxusbsentinel-$(curl -fsSL https://api.github.com/repos/thereisnotime/xxUSBSentinel/releases/latest | grep -o '"tag_name":"[^"]*"' | cut -d'"' -f4)-linux-x86_64.tar.gz | tar -xz --strip-components=1 -C ~/.local/bin xxusbsentinel-*/xxusbsentinel
 ```
 
-Or without just:
-```sh
-cargo build --release
+Or grab the tarball manually from the [Releases](https://github.com/thereisnotime/xxUSBSentinel/releases/latest) page.
+
+### Windows — download binary
+
+Download `xxusbsentinel-vX.Y.Z-windows-x86_64.zip` from the [Releases](https://github.com/thereisnotime/xxUSBSentinel/releases/latest) page, extract, and run `xxusbsentinel.exe`.
+
+**PowerShell one-liner:**
+```powershell
+$tag = (Invoke-RestMethod https://api.github.com/repos/thereisnotime/xxUSBSentinel/releases/latest).tag_name
+Invoke-WebRequest "https://github.com/thereisnotime/xxUSBSentinel/releases/download/$tag/xxusbsentinel-$tag-windows-x86_64.zip" -OutFile xxusbsentinel.zip
+Expand-Archive xxusbsentinel.zip -DestinationPath .
 ```
 
-**Install to `~/.local/bin`:**
-```sh
-just install
-```
+**Package managers** — Chocolatey and WinGet support coming soon.
 
 ---
 
