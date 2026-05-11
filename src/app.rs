@@ -81,7 +81,6 @@ impl eframe::App for SentinelApp {
         // Drain USB events
         while let Ok(event) = self.rx.try_recv() {
             match event {
-                GuiEvent::Log(e) => self.log.push(e),
                 GuiEvent::InitialDevices(list) => self.devices = list,
                 GuiEvent::DeviceConnected(d) => {
                     if !self.devices.iter().any(|x| x.vid_pid == d.vid_pid) {
@@ -318,16 +317,7 @@ impl eframe::App for SentinelApp {
                     .with_always_on_top()
                     .with_title(""),
                 |ctx, _| {
-                    egui::CentralPanel::default()
-                        .frame(egui::Frame::none().fill(egui::Color32::BLACK))
-                        .show(ctx, |ui| {
-                            if let Some((bytes, uri)) = img_bytes {
-                                ui.add(
-                                    egui::Image::from_bytes(uri, bytes)
-                                        .fit_to_exact_size(ui.available_size()),
-                                );
-                            }
-                        });
+                    bsod_panel(ctx, img_bytes);
                 },
             );
             return;
@@ -600,8 +590,7 @@ impl eframe::App for SentinelApp {
                                         "The shutdown trigger only fires for the mapped key device — no other device can trigger it"
                                     );
                                 } else {
-                                    ui.scope(|ui| {
-                                        ui.set_enabled(!dim);
+                                    ui.add_enabled_ui(!dim, |ui| {
                                         egui::ComboBox::from_id_salt(egui::Id::new("hook_dev").with(i))
                                             .selected_text(
                                                 device_options.iter()
@@ -853,7 +842,7 @@ impl eframe::App for SentinelApp {
         // ── Body ─────────────────────────────────────────────────────────
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
-            let body_frame = egui::Frame::none();
+            let body_frame = egui::Frame::NONE;
             let max_devices_w = (ui.available_width() - 200.0).max(180.0);
             egui::Panel::left("devices_panel")
                 .resizable(true)
@@ -1215,4 +1204,17 @@ fn export_log(log: &[LogEntry]) {
             }
         }
     }
+}
+
+// CentralPanel::show(ctx) is the only valid top-level panel API inside a viewport
+// callback where no &mut Ui is available; show_inside() requires a pre-existing Ui.
+#[allow(deprecated)]
+fn bsod_panel(ctx: &egui::Context, img_bytes: Option<(&'static [u8], &'static str)>) {
+    egui::CentralPanel::default()
+        .frame(egui::Frame::new().fill(egui::Color32::BLACK))
+        .show(ctx, |ui| {
+            if let Some((bytes, uri)) = img_bytes {
+                ui.add(egui::Image::from_bytes(uri, bytes).fit_to_exact_size(ui.available_size()));
+            }
+        });
 }

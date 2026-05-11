@@ -52,7 +52,6 @@ pub struct UsbDevice {
 
 /// Events sent from the USB monitor thread to the GUI.
 pub enum GuiEvent {
-    Log(LogEntry),
     DeviceConnected(UsbDevice),
     DeviceDisconnected(String),
     DeviceMapped(String),

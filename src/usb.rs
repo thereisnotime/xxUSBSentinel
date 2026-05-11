@@ -3,7 +3,6 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
 
 use crate::sentinel::{GuiEvent, SharedState, UsbDevice};
-use crate::shutdown;
 
 /// Starts the USB polling monitor on a background thread.
 /// Polls every 500 ms via rusb; triggers shutdown directly from this thread

@@ -70,7 +70,7 @@ fn default_bsod_style() -> String {
 impl Config {
     pub fn load() -> Self {
         let path = config_path();
-        let mut cfg: Self = std::fs::read_to_string(&path)
+        let cfg: Self = std::fs::read_to_string(&path)
             .ok()
             .and_then(|s| toml::from_str(&s).ok())
             .unwrap_or_default();
