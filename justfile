@@ -14,9 +14,9 @@ default:
 setup:
     #!/usr/bin/env bash
     set -euo pipefail
-    for plugin in rust just; do
-        asdf plugin add "$plugin" 2>/dev/null || true
-    done
+    asdf plugin add rust 2>/dev/null || true
+    asdf plugin add just 2>/dev/null || true
+    asdf plugin add actionlint https://github.com/crazy-matt/asdf-actionlint.git 2>/dev/null || true
     asdf install
     just hooks
     echo "Done. Restart your shell or run: asdf reshim"
@@ -71,15 +71,9 @@ test:
 # Full CI gate: fmt-check + clippy + test
 ci: fmt-check clippy test
 
-# Lint GitHub Actions workflow files (requires actionlint in PATH or ./actionlint)
+# Lint GitHub Actions workflow files
 actionlint:
-    #!/usr/bin/env bash
-    bin="$(command -v actionlint 2>/dev/null || echo ./actionlint)"
-    if [[ ! -x "$bin" ]]; then
-        echo "actionlint not found; run: curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash | bash"
-        exit 1
-    fi
-    "$bin" .github/workflows/*.yml
+    actionlint .github/workflows/*.yml
 
 # ── Maintenance ───────────────────────────────────────────────────────────────
 
