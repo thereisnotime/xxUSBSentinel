@@ -11,6 +11,12 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/thereisnotime/xxUSBSentinel/badge)](https://scorecard.dev/viewer/?uri=github.com/thereisnotime/xxUSBSentinel)
 [![deps.rs](https://deps.rs/repo/github/thereisnotime/xxUSBSentinel/status.svg)](https://deps.rs/repo/github/thereisnotime/xxUSBSentinel)
 
+<!-- OpenSpec -->
+[![Specs](https://raw.githubusercontent.com/thereisnotime/xxUSBSentinel/gh-pages/badges/number_of_specs.svg)](https://github.com/thereisnotime/xxUSBSentinel)
+[![Requirements](https://raw.githubusercontent.com/thereisnotime/xxUSBSentinel/gh-pages/badges/number_of_requirements.svg)](https://github.com/thereisnotime/xxUSBSentinel)
+[![Open changes](https://raw.githubusercontent.com/thereisnotime/xxUSBSentinel/gh-pages/badges/open_changes.svg)](https://github.com/thereisnotime/xxUSBSentinel)
+[![Task status](https://raw.githubusercontent.com/thereisnotime/xxUSBSentinel/gh-pages/badges/task_status.svg)](https://github.com/thereisnotime/xxUSBSentinel)
+
 <!-- Stack -->
 ![Rust](https://img.shields.io/badge/Rust-000000?style=flat&logo=rust&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-FCC624?style=flat&logo=linux&logoColor=black)
