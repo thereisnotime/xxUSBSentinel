@@ -6,34 +6,35 @@ use crate::config::{autostart_enabled, set_autostart, Config, Hook};
 use crate::sentinel::{GuiEvent, LogEntry, SharedState, UsbDevice};
 use crate::tray::{AppTray, TrayEvent};
 
-const GREEN:  Color32 = Color32::from_rgb(80,  200, 100);
-const RED:    Color32 = Color32::from_rgb(220,  60,  60);
-const YELLOW: Color32 = Color32::from_rgb(230, 190,  50);
-const DIM:    Color32 = Color32::from_rgb(130, 130, 130);
+const GREEN: Color32 = Color32::from_rgb(80, 200, 100);
+const RED: Color32 = Color32::from_rgb(220, 60, 60);
+const YELLOW: Color32 = Color32::from_rgb(230, 190, 50);
+const DIM: Color32 = Color32::from_rgb(130, 130, 130);
 
 pub struct SentinelApp {
-    state:            Arc<Mutex<SharedState>>,
-    rx:               mpsc::Receiver<GuiEvent>,
-    log:              Vec<LogEntry>,
-    devices:          Vec<UsbDevice>,
-    tray:             AppTray,
-    cfg:              Config,
-    autostart:        bool,
-    shutdown_ok:      bool,
-    prev_armed:       bool,
-    prev_has_key:     bool,
-    prev_test_mode:   bool,
-    prev_soc:         bool,
-    show_advanced:    bool,
-    show_help:        bool,
-    show_about:       bool,
-    hooks_buf:        Vec<Hook>,
+    state: Arc<Mutex<SharedState>>,
+    rx: mpsc::Receiver<GuiEvent>,
+    log: Vec<LogEntry>,
+    devices: Vec<UsbDevice>,
+    tray: AppTray,
+    cfg: Config,
+    autostart: bool,
+    shutdown_ok: bool,
+    prev_armed: bool,
+    prev_has_key: bool,
+    prev_test_mode: bool,
+    prev_soc: bool,
+    show_advanced: bool,
+    show_help: bool,
+    show_about: bool,
+    hooks_buf: Vec<Hook>,
     // Fake BSOD overlay state
-    bsod_active:         bool,
-    bsod_style:          String,
-    bsod_shutdown_at:    Option<std::time::Instant>,
-    bsod_wipe_swap:      bool,
-    bsod_wipe_hiberfil:  bool,
+    bsod_active: bool,
+    bsod_style: String,
+    bsod_frames: u8, // counts rendered frames before firing shutdown
+    bsod_wipe_swap: bool,
+    bsod_wipe_hiberfil: bool,
+    bsod_preview_until: Option<std::time::Instant>,
 }
 
 impl SentinelApp {
@@ -46,8 +47,8 @@ impl SentinelApp {
         egui_extras::install_image_loaders(&cc.egui_ctx);
         cc.egui_ctx.set_visuals(dark_visuals());
 
-        let autostart    = autostart_enabled();
-        let shutdown_ok  = crate::shutdown::can_shutdown();
+        let autostart = autostart_enabled();
+        let shutdown_ok = crate::shutdown::can_shutdown();
         Self {
             state,
             rx,
@@ -58,18 +59,19 @@ impl SentinelApp {
             cfg,
             autostart,
             shutdown_ok,
-            prev_armed:      false,
-            prev_has_key:    false,
-            prev_test_mode:  false,
-            prev_soc:        false,
-            show_advanced:       false,
-            show_help:           false,
-            show_about:          false,
-            bsod_active:         false,
-            bsod_style:          String::new(),
-            bsod_shutdown_at:    None,
-            bsod_wipe_swap:      false,
-            bsod_wipe_hiberfil:  false,
+            prev_armed: false,
+            prev_has_key: false,
+            prev_test_mode: false,
+            prev_soc: false,
+            show_advanced: false,
+            show_help: false,
+            show_about: false,
+            bsod_active: false,
+            bsod_style: String::new(),
+            bsod_frames: 0,
+            bsod_wipe_swap: false,
+            bsod_wipe_hiberfil: false,
+            bsod_preview_until: None,
         }
     }
 }
@@ -79,11 +81,16 @@ impl eframe::App for SentinelApp {
         // Drain USB events
         while let Ok(event) = self.rx.try_recv() {
             match event {
-                GuiEvent::Log(e)               => self.log.push(e),
+                GuiEvent::Log(e) => self.log.push(e),
                 GuiEvent::InitialDevices(list) => self.devices = list,
-                GuiEvent::DeviceConnected(d)   => {
+                GuiEvent::DeviceConnected(d) => {
                     if !self.devices.iter().any(|x| x.vid_pid == d.vid_pid) {
-                        let comment = self.cfg.device_comments.get(&d.vid_pid).cloned().unwrap_or_default();
+                        let comment = self
+                            .cfg
+                            .device_comments
+                            .get(&d.vid_pid)
+                            .cloned()
+                            .unwrap_or_default();
                         let label = display_label(&d.vid_pid, &d.name, &comment);
                         push_log(&mut self.log, &format!("Connected: {}", label));
                         run_hooks(&self.cfg.hooks, &d.vid_pid, &d.name, "connected");
@@ -91,9 +98,18 @@ impl eframe::App for SentinelApp {
                     }
                 }
                 GuiEvent::DeviceDisconnected(vp) => {
-                    let name = self.devices.iter().find(|d| d.vid_pid == vp)
-                        .map(|d| d.name.clone()).unwrap_or_default();
-                    let comment = self.cfg.device_comments.get(&vp).cloned().unwrap_or_default();
+                    let name = self
+                        .devices
+                        .iter()
+                        .find(|d| d.vid_pid == vp)
+                        .map(|d| d.name.clone())
+                        .unwrap_or_default();
+                    let comment = self
+                        .cfg
+                        .device_comments
+                        .get(&vp)
+                        .cloned()
+                        .unwrap_or_default();
                     let label = display_label(&vp, &name, &comment);
                     push_log(&mut self.log, &format!("Disconnected: {}", label));
                     run_hooks(&self.cfg.hooks, &vp, &name, "disconnected");
@@ -102,34 +118,60 @@ impl eframe::App for SentinelApp {
                 GuiEvent::DeviceMapped(vp) => {
                     self.cfg.key_device = vp.clone();
                     self.cfg.save();
-                    let name = self.devices.iter().find(|d| d.vid_pid == vp)
-                        .map(|d| d.name.clone()).unwrap_or_default();
-                    let comment = self.cfg.device_comments.get(&vp).cloned().unwrap_or_default();
+                    let name = self
+                        .devices
+                        .iter()
+                        .find(|d| d.vid_pid == vp)
+                        .map(|d| d.name.clone())
+                        .unwrap_or_default();
+                    let comment = self
+                        .cfg
+                        .device_comments
+                        .get(&vp)
+                        .cloned()
+                        .unwrap_or_default();
                     let label = display_label(&vp, &name, &comment);
                     push_log(&mut self.log, &format!("Key device mapped: {}", label));
                 }
                 GuiEvent::TestTriggered => {
-                    push_log(&mut self.log, "Test triggered — key device removed (shutdown suppressed).");
-                    let name = self.devices.iter().find(|d| d.vid_pid == self.cfg.key_device)
-                        .map(|d| d.name.clone()).unwrap_or_default();
+                    push_log(
+                        &mut self.log,
+                        "Test triggered — key device removed (shutdown suppressed).",
+                    );
+                    let name = self
+                        .devices
+                        .iter()
+                        .find(|d| d.vid_pid == self.cfg.key_device)
+                        .map(|d| d.name.clone())
+                        .unwrap_or_default();
                     run_hooks(&self.cfg.hooks, &self.cfg.key_device, &name, "triggered");
                 }
-                GuiEvent::ShutdownTriggered { wipe_swap, wipe_hiberfil, fake_bsod, bsod_style, bsod_delay_secs } => {
-                    let name = self.devices.iter().find(|d| d.vid_pid == self.cfg.key_device)
-                        .map(|d| d.name.clone()).unwrap_or_default();
+                GuiEvent::ShutdownTriggered {
+                    wipe_swap,
+                    wipe_hiberfil,
+                    fake_bsod,
+                    bsod_style,
+                } => {
+                    let name = self
+                        .devices
+                        .iter()
+                        .find(|d| d.vid_pid == self.cfg.key_device)
+                        .map(|d| d.name.clone())
+                        .unwrap_or_default();
                     run_hooks(&self.cfg.hooks, &self.cfg.key_device, &name, "triggered");
                     if fake_bsod {
-                        self.bsod_active        = true;
-                        self.bsod_style         = bsod_style;
-                        self.bsod_wipe_swap     = wipe_swap;
+                        self.bsod_active = true;
+                        self.bsod_style = bsod_style;
+                        self.bsod_wipe_swap = wipe_swap;
                         self.bsod_wipe_hiberfil = wipe_hiberfil;
-                        self.bsod_shutdown_at   = Some(
-                            std::time::Instant::now()
-                                + std::time::Duration::from_secs(bsod_delay_secs as u64)
-                        );
+                        self.bsod_frames = 0;
                     } else {
-                        if wipe_swap    { crate::wipe::wipe_swap(); }
-                        if wipe_hiberfil { crate::wipe::wipe_hiberfil(); }
+                        if wipe_swap {
+                            crate::wipe::wipe_swap();
+                        }
+                        if wipe_hiberfil {
+                            crate::wipe::wipe_hiberfil();
+                        }
                         crate::shutdown::execute();
                     }
                 }
@@ -139,15 +181,22 @@ impl eframe::App for SentinelApp {
         // Sync tray state whenever any relevant field changes
         let (armed, has_key, test_mode_s, soc_s) = {
             let s = self.state.lock().unwrap();
-            (s.armed, !s.key_device.is_empty(), s.test_mode, s.shutdown_on_close)
+            (
+                s.armed,
+                !s.key_device.is_empty(),
+                s.test_mode,
+                s.shutdown_on_close,
+            )
         };
-        if armed != self.prev_armed || has_key != self.prev_has_key
-            || test_mode_s != self.prev_test_mode || soc_s != self.prev_soc
+        if armed != self.prev_armed
+            || has_key != self.prev_has_key
+            || test_mode_s != self.prev_test_mode
+            || soc_s != self.prev_soc
         {
-            self.prev_armed      = armed;
-            self.prev_has_key    = has_key;
-            self.prev_test_mode  = test_mode_s;
-            self.prev_soc        = soc_s;
+            self.prev_armed = armed;
+            self.prev_has_key = has_key;
+            self.prev_test_mode = test_mode_s;
+            self.prev_soc = soc_s;
             self.tray.set_state(armed, has_key, test_mode_s, soc_s);
         }
 
@@ -166,7 +215,11 @@ impl eframe::App for SentinelApp {
                     let mut s = self.state.lock().unwrap();
                     if !s.key_device.is_empty() {
                         s.armed = !s.armed;
-                        let msg = if s.armed { "Sentinel ARMED (via tray)." } else { "Sentinel DISARMED (via tray)." };
+                        let msg = if s.armed {
+                            "Sentinel ARMED (via tray)."
+                        } else {
+                            "Sentinel DISARMED (via tray)."
+                        };
                         drop(s);
                         push_log(&mut self.log, msg);
                     }
@@ -179,7 +232,14 @@ impl eframe::App for SentinelApp {
                     };
                     self.cfg.test_mode = new_val;
                     self.cfg.save();
-                    push_log(&mut self.log, if new_val { "Test mode ON (via tray)." } else { "Test mode OFF (via tray)." });
+                    push_log(
+                        &mut self.log,
+                        if new_val {
+                            "Test mode ON (via tray)."
+                        } else {
+                            "Test mode OFF (via tray)."
+                        },
+                    );
                 }
                 TrayEvent::ToggleShutdownOnClose => {
                     let new_val = {
@@ -189,17 +249,35 @@ impl eframe::App for SentinelApp {
                     };
                     self.cfg.shutdown_on_close = new_val;
                     self.cfg.save();
-                    push_log(&mut self.log, if new_val { "Shutdown on close ON (via tray)." } else { "Shutdown on close OFF (via tray)." });
+                    push_log(
+                        &mut self.log,
+                        if new_val {
+                            "Shutdown on close ON (via tray)."
+                        } else {
+                            "Shutdown on close OFF (via tray)."
+                        },
+                    );
                 }
             }
         }
 
-        // Fire shutdown when fake BSOD timer expires
-        if let Some(at) = self.bsod_shutdown_at {
-            if std::time::Instant::now() >= at {
-                self.bsod_shutdown_at = None;
-                if self.bsod_wipe_swap    { crate::wipe::wipe_swap(); }
-                if self.bsod_wipe_hiberfil { crate::wipe::wipe_hiberfil(); }
+        // Expire preview
+        if let Some(until) = self.bsod_preview_until {
+            if std::time::Instant::now() >= until {
+                self.bsod_preview_until = None;
+            }
+        }
+
+        // Fire shutdown after BSOD has rendered a couple of frames
+        if self.bsod_active && self.bsod_preview_until.is_none() {
+            self.bsod_frames = self.bsod_frames.saturating_add(1);
+            if self.bsod_frames >= 3 {
+                if self.bsod_wipe_swap {
+                    crate::wipe::wipe_swap();
+                }
+                if self.bsod_wipe_hiberfil {
+                    crate::wipe::wipe_hiberfil();
+                }
                 crate::shutdown::execute();
             }
         }
@@ -210,12 +288,27 @@ impl eframe::App for SentinelApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
 
-        // ── Fake BSOD overlay ─────────────────────────────────────────────
-        if self.bsod_active {
-            let img_bytes: &[u8] = match self.bsod_style.as_str() {
-                "win11" => include_bytes!("../resources/bsod-win11.png"),
-                "linux" => include_bytes!("../resources/bsod-linux.png"),
-                _       => include_bytes!("../resources/bsod-win10.png"),
+        // ── Fake BSOD overlay (real trigger or preview) ───────────────────
+        if self.bsod_active || self.bsod_preview_until.is_some() {
+            let style = if self.bsod_active {
+                self.bsod_style.as_str()
+            } else {
+                self.cfg.bsod_style.as_str()
+            };
+            let img_bytes: Option<(&[u8], &str)> = match style {
+                "win10" => Some((
+                    include_bytes!("../resources/bsod-win10.png"),
+                    "bytes://bsod-win10",
+                )),
+                "win11" => Some((
+                    include_bytes!("../resources/bsod-win11.png"),
+                    "bytes://bsod-win11",
+                )),
+                "linux" => Some((
+                    include_bytes!("../resources/bsod-linux.png"),
+                    "bytes://bsod-linux",
+                )),
+                _ => None, // "blank" — solid black
             };
             ctx.show_viewport_immediate(
                 egui::ViewportId::from_hash_of("bsod_overlay"),
@@ -226,23 +319,14 @@ impl eframe::App for SentinelApp {
                     .with_title(""),
                 |ctx, _| {
                     egui::CentralPanel::default()
-                        .frame(egui::Frame::none())
+                        .frame(egui::Frame::none().fill(egui::Color32::BLACK))
                         .show(ctx, |ui| {
-                            let tex = ui.ctx().load_texture(
-                                "bsod",
-                                egui::ColorImage::from_rgba_unmultiplied(
-                                    [1, 1],
-                                    &[0, 0, 0, 255],
-                                ),
-                                egui::TextureOptions::default(),
-                            );
-                            // Load via egui_extras image loader
-                            let uri = format!("bytes://bsod-{}", &self.bsod_style);
-                            drop(tex);
-                            ui.add(
-                                egui::Image::from_bytes(uri, img_bytes)
-                                    .fit_to_exact_size(ui.available_size())
-                            );
+                            if let Some((bytes, uri)) = img_bytes {
+                                ui.add(
+                                    egui::Image::from_bytes(uri, bytes)
+                                        .fit_to_exact_size(ui.available_size()),
+                                );
+                            }
                         });
                 },
             );
@@ -257,7 +341,10 @@ impl eframe::App for SentinelApp {
             drop(s);
             if should_shutdown {
                 if is_test {
-                    push_log(&mut self.log, "Test triggered — window closed while armed (shutdown suppressed).");
+                    push_log(
+                        &mut self.log,
+                        "Test triggered — window closed while armed (shutdown suppressed).",
+                    );
                 } else {
                     crate::shutdown::execute();
                 }
@@ -268,7 +355,13 @@ impl eframe::App for SentinelApp {
 
         let (armed, test_mode, waiting, key_device, shutdown_on_close) = {
             let s = self.state.lock().unwrap();
-            (s.armed, s.test_mode, s.waiting, s.key_device.clone(), s.shutdown_on_close)
+            (
+                s.armed,
+                s.test_mode,
+                s.waiting,
+                s.key_device.clone(),
+                s.shutdown_on_close,
+            )
         };
 
         // ── Popups ────────────────────────────────────────────────────────
@@ -397,37 +490,46 @@ impl eframe::App for SentinelApp {
                         self.cfg.save();
                     }
 
-                    let mut fb = self.cfg.fake_bsod;
-                    if ui.checkbox(&mut fb, "Show fake crash screen")
-                        .on_hover_text("Displays a fullscreen BSOD / kernel panic screenshot for a few seconds before shutting down.")
-                        .changed()
-                    {
-                        self.cfg.fake_bsod = fb;
-                        self.state.lock().unwrap().fake_bsod = fb;
-                        self.cfg.save();
-                    }
+                    ui.horizontal(|ui| {
+                        let mut fb = self.cfg.fake_bsod;
+                        if ui.checkbox(&mut fb, "Show fake crash screen")
+                            .on_hover_text("Displays a fullscreen BSOD / kernel panic screenshot for a few seconds before shutting down.")
+                            .changed()
+                        {
+                            self.cfg.fake_bsod = fb;
+                            self.state.lock().unwrap().fake_bsod = fb;
+                            self.cfg.save();
+                        }
+                        if ui.small_button("Preview")
+                            .on_hover_text("Show the selected crash screen for 2 seconds — no shutdown")
+                            .clicked()
+                        {
+                            self.bsod_preview_until = Some(
+                                std::time::Instant::now() + std::time::Duration::from_secs(2)
+                            );
+                        }
+                    });
 
                     if self.cfg.fake_bsod {
                         ui.indent("bsod_opts", |ui| {
                             ui.horizontal(|ui| {
                                 ui.label("Style:");
-                                let styles = [("win10", "Windows 10"), ("win11", "Windows 11"), ("linux", "Linux kernel panic")];
-                                for (val, label) in styles {
-                                    if ui.selectable_label(self.cfg.bsod_style == val, label).clicked() {
-                                        self.cfg.bsod_style = val.into();
-                                        self.state.lock().unwrap().bsod_style = val.into();
-                                        self.cfg.save();
-                                    }
-                                }
-                            });
-                            ui.horizontal(|ui| {
-                                ui.label("Duration:");
-                                let mut secs = self.cfg.bsod_delay_secs as f32;
-                                if ui.add(egui::Slider::new(&mut secs, 1.0..=30.0).suffix(" s").step_by(1.0)).changed() {
-                                    self.cfg.bsod_delay_secs = secs as u32;
-                                    self.state.lock().unwrap().bsod_delay_secs = secs as u32;
-                                    self.cfg.save();
-                                }
+                                let styles = [("win10", "Windows 10"), ("win11", "Windows 11"), ("linux", "Linux kernel panic"), ("blank", "Blank screen")];
+                                let current_label = styles.iter()
+                                    .find(|(v, _)| *v == self.cfg.bsod_style)
+                                    .map(|(_, l)| *l)
+                                    .unwrap_or("Unknown");
+                                egui::ComboBox::from_id_salt("bsod_style_combo")
+                                    .selected_text(current_label)
+                                    .show_ui(ui, |ui| {
+                                        for (val, label) in styles {
+                                            if ui.selectable_label(self.cfg.bsod_style == val, label).clicked() {
+                                                self.cfg.bsod_style = val.into();
+                                                self.state.lock().unwrap().bsod_style = val.into();
+                                                self.cfg.save();
+                                            }
+                                        }
+                                    });
                             });
                         });
                     }
@@ -603,42 +705,48 @@ impl eframe::App for SentinelApp {
 
         // ── Status header ─────────────────────────────────────────────────
 
-        egui::Panel::top("header")
-            .show_inside(ui, |ui| {
-                const ICON_W: f32 = 60.0;
+        egui::Panel::top("header").show_inside(ui, |ui| {
+            const ICON_W: f32 = 60.0;
 
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
                 ui.add_space(8.0);
-                ui.horizontal(|ui| {
-                    ui.add_space(8.0);
-                    let src = if armed {
-                        egui::include_image!("../resources/guard-on.png")
+                let src = if armed {
+                    egui::include_image!("../resources/guard-on.png")
+                } else {
+                    egui::include_image!("../resources/guard-off.png")
+                };
+                ui.add(egui::Image::new(src).fit_to_exact_size(egui::vec2(ICON_W, ICON_W)));
+                ui.add_space(12.0);
+                ui.vertical(|ui| {
+                    let (label, color) = if armed {
+                        if test_mode {
+                            ("[ ARMED — TEST MODE ]", YELLOW)
+                        } else {
+                            ("[ ARMED ]", GREEN)
+                        }
+                    } else if waiting {
+                        ("[ Waiting for unplug... ]", YELLOW)
                     } else {
-                        egui::include_image!("../resources/guard-off.png")
+                        ("[ Disarmed ]", DIM)
                     };
-                    ui.add(egui::Image::new(src).fit_to_exact_size(egui::vec2(ICON_W, ICON_W)));
-                    ui.add_space(12.0);
-                    ui.vertical(|ui| {
-                        let (label, color) = if armed {
-                            if test_mode { ("[ ARMED — TEST MODE ]", YELLOW) }
-                            else         { ("[ ARMED ]",             GREEN)  }
-                        } else if waiting {
-                            ("[ Waiting for unplug... ]", YELLOW)
-                        } else {
-                            ("[ Disarmed ]", DIM)
-                        };
-                        ui.label(RichText::new(label).size(18.0).strong().color(color));
-                        ui.add_space(4.0);
-                        let key_text = if key_device.is_empty() {
-                            RichText::new("Key device:  none").color(DIM)
-                        } else {
-                            RichText::new(format!("Key device:  {}", key_device))
-                        };
-                        ui.label(key_text);
-                        ui.label(RichText::new(format!("v{}", env!("CARGO_PKG_VERSION"))).color(DIM).small());
-                    });
+                    ui.label(RichText::new(label).size(18.0).strong().color(color));
+                    ui.add_space(4.0);
+                    let key_text = if key_device.is_empty() {
+                        RichText::new("Key device:  none").color(DIM)
+                    } else {
+                        RichText::new(format!("Key device:  {}", key_device))
+                    };
+                    ui.label(key_text);
+                    ui.label(
+                        RichText::new(format!("v{}", env!("CARGO_PKG_VERSION")))
+                            .color(DIM)
+                            .small(),
+                    );
                 });
-                ui.add_space(8.0);
             });
+            ui.add_space(8.0);
+        });
 
         // ── Toolbar ───────────────────────────────────────────────────────
 
@@ -972,11 +1080,11 @@ impl eframe::App for SentinelApp {
 fn dark_visuals() -> egui::Visuals {
     let mut v = egui::Visuals::dark();
     v.window_corner_radius = egui::CornerRadius::same(6);
-    v.window_shadow        = egui::Shadow::NONE;
-    v.panel_fill           = Color32::from_rgb(22, 22, 28);
-    v.window_fill          = Color32::from_rgb(30, 30, 38);
-    v.extreme_bg_color     = Color32::from_rgb(14, 14, 18);
-    v.faint_bg_color       = Color32::from_rgb(28, 28, 36);
+    v.window_shadow = egui::Shadow::NONE;
+    v.panel_fill = Color32::from_rgb(22, 22, 28);
+    v.window_fill = Color32::from_rgb(30, 30, 38);
+    v.extreme_bg_color = Color32::from_rgb(14, 14, 18);
+    v.faint_bg_color = Color32::from_rgb(28, 28, 36);
     v.widgets.noninteractive.bg_stroke = Stroke::new(1.0, Color32::from_rgb(50, 50, 60));
     v
 }
@@ -986,14 +1094,21 @@ fn now() -> String {
 }
 
 fn push_log(log: &mut Vec<LogEntry>, text: &str) {
-    log.push(LogEntry { time: now(), text: text.to_string() });
+    log.push(LogEntry {
+        time: now(),
+        text: text.to_string(),
+    });
 }
 
 fn open_url(url: &str) {
     #[cfg(target_os = "linux")]
-    { let _ = std::process::Command::new("xdg-open").arg(url).spawn(); }
+    {
+        let _ = std::process::Command::new("xdg-open").arg(url).spawn();
+    }
     #[cfg(target_os = "windows")]
-    { let _ = std::process::Command::new("explorer").arg(url).spawn(); }
+    {
+        let _ = std::process::Command::new("explorer").arg(url).spawn();
+    }
 }
 
 fn collect_cmd(args: &[&str]) -> String {
@@ -1009,16 +1124,22 @@ fn collect_cmd(args: &[&str]) -> String {
 
 fn open_bug_report_url() {
     let version = env!("CARGO_PKG_VERSION");
-    let os      = std::env::consts::OS;
-    let arch    = std::env::consts::ARCH;
-    let kernel  = collect_cmd(&["uname", "-r"]);
-    let de      = std::env::var("XDG_CURRENT_DESKTOP")
+    let os = std::env::consts::OS;
+    let arch = std::env::consts::ARCH;
+    let kernel = collect_cmd(&["uname", "-r"]);
+    let de = std::env::var("XDG_CURRENT_DESKTOP")
         .or_else(|_| std::env::var("DESKTOP_SESSION"))
         .unwrap_or_else(|_| "unknown".into());
     let display = std::env::var("WAYLAND_DISPLAY")
         .map(|_| "Wayland")
-        .unwrap_or_else(|_| if std::env::var("DISPLAY").is_ok() { "X11" } else { "unknown" });
-    let title   = format!("[Bug] - xxUSBSentinel v{} on {}/{}", version, os, arch);
+        .unwrap_or_else(|_| {
+            if std::env::var("DISPLAY").is_ok() {
+                "X11"
+            } else {
+                "unknown"
+            }
+        });
+    let title = format!("[Bug] - xxUSBSentinel v{} on {}/{}", version, os, arch);
     let body    = format!(
         "**Version:** {}\n**OS:** {}\n**Arch:** {}\n**Kernel:** {}\n**Desktop:** {}\n**Display server:** {}\n\n\
          **Describe the bug:**\n<!-- A clear description of what went wrong -->\n\n\
@@ -1036,21 +1157,30 @@ fn open_bug_report_url() {
 }
 
 fn url_encode(s: &str) -> String {
-    s.bytes().flat_map(|b| match b {
-        b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9'
-        | b'-' | b'_' | b'.' | b'~' => vec![b as char],
-        b' ' => vec!['+'],
-        b => format!("%{:02X}", b).chars().collect(),
-    }).collect()
+    s.bytes()
+        .flat_map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => vec![b as char],
+            b' ' => vec!['+'],
+            b => format!("%{:02X}", b).chars().collect(),
+        })
+        .collect()
 }
 
 fn run_hooks(hooks: &[Hook], vid_pid: &str, name: &str, event: &str) {
     for hook in hooks {
-        if !hook.enabled { continue; }
-        if hook.script.trim().is_empty() { continue; }
-        if hook.event != event { continue; }
+        if !hook.enabled {
+            continue;
+        }
+        if hook.script.trim().is_empty() {
+            continue;
+        }
+        if hook.event != event {
+            continue;
+        }
         // "triggered" always matches — it only ever fires for the key device
-        if hook.event != "triggered" && hook.device != "*" && hook.device != vid_pid { continue; }
+        if hook.event != "triggered" && hook.device != "*" && hook.device != vid_pid {
+            continue;
+        }
         let _ = std::process::Command::new(hook.script.trim())
             .args([vid_pid, name, event])
             .spawn();
@@ -1065,9 +1195,9 @@ fn copy_to_clipboard(text: &str) {
 
 fn display_label(vid_pid: &str, name: &str, comment: &str) -> String {
     match (name.is_empty(), comment.is_empty()) {
-        (true,  true)  => vid_pid.to_string(),
-        (false, true)  => format!("{} ({})", vid_pid, name),
-        (true,  false) => format!("{} [{}]", vid_pid, comment),
+        (true, true) => vid_pid.to_string(),
+        (false, true) => format!("{} ({})", vid_pid, name),
+        (true, false) => format!("{} [{}]", vid_pid, comment),
         (false, false) => format!("{} ({}) [{}]", vid_pid, name, comment),
     }
 }
@@ -1080,7 +1210,9 @@ fn export_log(log: &[LogEntry]) {
         .save_file()
     {
         if let Ok(mut f) = std::fs::File::create(&path) {
-            for e in log { let _ = writeln!(f, "[{}]  {}", e.time, e.text); }
+            for e in log {
+                let _ = writeln!(f, "[{}]  {}", e.time, e.text);
+            }
         }
     }
 }

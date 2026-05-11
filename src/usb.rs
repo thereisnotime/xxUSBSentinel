@@ -71,11 +71,10 @@ pub fn start_monitor(state: Arc<Mutex<SharedState>>, tx: mpsc::Sender<GuiEvent>)
                                     Action::TestTrigger
                                 } else {
                                     Action::Shutdown {
-                                        wipe_swap:       s.wipe_swap,
-                                        wipe_hiberfil:   s.wipe_hiberfil,
-                                        fake_bsod:       s.fake_bsod,
-                                        bsod_style:      s.bsod_style.clone(),
-                                        bsod_delay_secs: s.bsod_delay_secs,
+                                        wipe_swap: s.wipe_swap,
+                                        wipe_hiberfil: s.wipe_hiberfil,
+                                        fake_bsod: s.fake_bsod,
+                                        bsod_style: s.bsod_style.clone(),
                                     }
                                 }
                             } else {
@@ -84,7 +83,9 @@ pub fn start_monitor(state: Arc<Mutex<SharedState>>, tx: mpsc::Sender<GuiEvent>)
                         };
 
                         match action {
-                            Action::Mapped(v) => { let _ = tx.send(GuiEvent::DeviceMapped(v)); }
+                            Action::Mapped(v) => {
+                                let _ = tx.send(GuiEvent::DeviceMapped(v));
+                            }
                             Action::TestTrigger => {
                                 crate::shutdown::notify(
                                     "xxUSBSentinel — Test triggered",
@@ -92,7 +93,12 @@ pub fn start_monitor(state: Arc<Mutex<SharedState>>, tx: mpsc::Sender<GuiEvent>)
                                 );
                                 let _ = tx.send(GuiEvent::TestTriggered);
                             }
-                            Action::Shutdown { wipe_swap, wipe_hiberfil, fake_bsod, bsod_style, bsod_delay_secs } => {
+                            Action::Shutdown {
+                                wipe_swap,
+                                wipe_hiberfil,
+                                fake_bsod,
+                                bsod_style,
+                            } => {
                                 crate::shutdown::notify(
                                     "xxUSBSentinel — SHUTDOWN",
                                     "Key device removed. Shutting down now.",
@@ -102,7 +108,6 @@ pub fn start_monitor(state: Arc<Mutex<SharedState>>, tx: mpsc::Sender<GuiEvent>)
                                     wipe_hiberfil,
                                     fake_bsod,
                                     bsod_style,
-                                    bsod_delay_secs,
                                 });
                             }
                             Action::None => {}
@@ -141,10 +146,14 @@ fn vid_pid_str(vid: u16, pid: u16) -> String {
     format!("{:04X}:{:04X}", vid, pid)
 }
 
-
 enum Action {
     None,
     Mapped(String),
     TestTrigger,
-    Shutdown { wipe_swap: bool, wipe_hiberfil: bool, fake_bsod: bool, bsod_style: String, bsod_delay_secs: u32 },
+    Shutdown {
+        wipe_swap: bool,
+        wipe_hiberfil: bool,
+        fake_bsod: bool,
+        bsod_style: String,
+    },
 }
