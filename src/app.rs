@@ -890,7 +890,7 @@ impl eframe::App for SentinelApp {
                                             let is_key  = !key_device.is_empty() && vid_pid == key_device;
                                             let row_color = if is_key { GREEN } else { Color32::from_rgb(200, 200, 210) };
 
-                                            // VID:PID column — full device context menu
+                                            // VID:PID column
                                             let id_resp = ui.add(
                                                 egui::Label::new(RichText::new(&vid_pid).color(row_color).monospace())
                                                     .sense(egui::Sense::hover()),
@@ -902,7 +902,21 @@ impl eframe::App for SentinelApp {
                                                 .map(|e| format!("[{}]  {}", e.time, e.text));
                                             let vid_only = vid_pid.split(':').next().unwrap_or("").to_string();
                                             let pid_only = vid_pid.split(':').nth(1).unwrap_or("").to_string();
-                                            id_resp.context_menu(|ui| {
+
+                                            // Name column — width tracks panel size, truncates overflow
+                                            let name_text = if name.is_empty() {
+                                                RichText::new("Unknown device").color(row_color).italics()
+                                            } else {
+                                                RichText::new(&name).color(row_color)
+                                            };
+                                            let name_resp = ui.scope(|ui| {
+                                                ui.set_min_width(name_col_w);
+                                                ui.set_max_width(name_col_w);
+                                                ui.add(egui::Label::new(name_text).truncate().sense(egui::Sense::hover()))
+                                            }).inner;
+
+                                            // Context menu on the whole row (VID:PID + Name columns)
+                                            (id_resp | name_resp).context_menu(|ui| {
                                                 ui.set_min_width(180.0);
                                                 if ui.button("Copy VID:PID").clicked() {
                                                     copy_to_clipboard(&vid_pid);
@@ -935,18 +949,6 @@ impl eframe::App for SentinelApp {
                                                     ));
                                                     ui.close();
                                                 }
-                                            });
-
-                                            // Name column — width tracks panel size, truncates overflow
-                                            let name_text = if name.is_empty() {
-                                                RichText::new("Unknown device").color(row_color).italics()
-                                            } else {
-                                                RichText::new(&name).color(row_color)
-                                            };
-                                            ui.scope(|ui| {
-                                                ui.set_min_width(name_col_w);
-                                                ui.set_max_width(name_col_w);
-                                                ui.add(egui::Label::new(name_text).truncate());
                                             });
 
                                             // Comment column — inline editable, saved to config
