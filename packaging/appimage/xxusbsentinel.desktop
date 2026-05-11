@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=xxUSBSentinel
+GenericName=USB Kill-Switch
+Comment=Arm a USB device as a kill-switch that triggers immediate shutdown when removed
+Exec=xxusbsentinel
+Icon=xxusbsentinel
+Type=Application
+Categories=Security;System;Utility;
+Keywords=usb;security;killswitch;encryption;shutdown;
+StartupNotify=false

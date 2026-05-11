@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>xxusbsentinel</id>
+    <version>$version$</version>
+    <title>xxUSBSentinel</title>
+    <authors>thereisnotime</authors>
+    <projectUrl>https://github.com/thereisnotime/xxUSBSentinel</projectUrl>
+    <licenseUrl>https://github.com/thereisnotime/xxUSBSentinel/blob/master/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <iconUrl>https://raw.githubusercontent.com/thereisnotime/xxUSBSentinel/master/resources/guard-on.png</iconUrl>
+    <description>USB kill-switch for Windows. Map any USB device as a key — when it is removed while the sentinel is armed, the machine shuts down immediately. Designed to make recovering encrypted drive keys as hard as possible if someone physically seizes your machine.</description>
+    <summary>USB kill-switch: immediate forced shutdown when your key device is removed.</summary>
+    <tags>usb security kill-switch encryption shutdown privacy admin</tags>
+    <projectSourceUrl>https://github.com/thereisnotime/xxUSBSentinel</projectSourceUrl>
+    <bugTrackerUrl>https://github.com/thereisnotime/xxUSBSentinel/issues</bugTrackerUrl>
+    <releaseNotes>https://github.com/thereisnotime/xxUSBSentinel/releases</releaseNotes>
+  </metadata>
+</package>
