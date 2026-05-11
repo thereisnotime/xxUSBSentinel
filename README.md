@@ -1,11 +1,16 @@
 # xxUSBSentinel
 
+<!-- CI / Release -->
 [![CI](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/ci.yml)
 [![Release](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/release.yml/badge.svg)](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/release.yml)
 [![Latest release](https://img.shields.io/github/v/release/thereisnotime/xxUSBSentinel)](https://github.com/thereisnotime/xxUSBSentinel/releases/latest)
 [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
+
+<!-- Quality / Security -->
 [![codecov](https://codecov.io/gh/thereisnotime/xxUSBSentinel/branch/master/graph/badge.svg)](https://codecov.io/gh/thereisnotime/xxUSBSentinel)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/thereisnotime/xxUSBSentinel/badge)](https://scorecard.dev/viewer/?uri=github.com/thereisnotime/xxUSBSentinel)
+
+<!-- Stack -->
 ![Rust](https://img.shields.io/badge/Rust-000000?style=flat&logo=rust&logoColor=white)
 ![Linux](https://img.shields.io/badge/Linux-FCC624?style=flat&logo=linux&logoColor=black)
 ![Windows](https://img.shields.io/badge/Windows-0078D6?style=flat&logo=windows&logoColor=white)
@@ -13,7 +18,7 @@
 
 USB kill-switch for Linux and Windows. Map any USB device as a key. When it is removed while the sentinel is armed, the machine shuts down immediately. Designed to make recovering encrypted drive keys as hard as possible if someone physically seizes your machine.
 
-> **Warning:** This tool does not encrypt your data. Use full-disk encryption (LUKS, VeraCrypt, BitLocker) alongside it.
+> ⚠️ **Warning:** This tool does not encrypt your data. Use full-disk encryption (LUKS, VeraCrypt, BitLocker) alongside it.
 
 ---
 
