@@ -13,14 +13,19 @@ pub fn wipe_swap() {
     }
     #[cfg(target_os = "windows")]
     {
-        let _ = Command::new("reg").args([
-            "add",
-            r"HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management",
-            "/v", "ClearPageFileAtShutdown",
-            "/t", "REG_DWORD",
-            "/d", "1",
-            "/f",
-        ]).status();
+        let _ = Command::new("reg")
+            .args([
+                "add",
+                r"HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management",
+                "/v",
+                "ClearPageFileAtShutdown",
+                "/t",
+                "REG_DWORD",
+                "/d",
+                "1",
+                "/f",
+            ])
+            .status();
     }
 }
 

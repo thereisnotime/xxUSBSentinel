@@ -6,25 +6,34 @@ pub fn can_shutdown() -> bool {
     {
         // Query logind via busctl (present on all systemd systems)
         if let Ok(out) = Command::new("busctl")
-            .args(["call", "org.freedesktop.login1",
-                   "/org/freedesktop/login1",
-                   "org.freedesktop.login1.Manager",
-                   "CanPowerOff"])
+            .args([
+                "call",
+                "org.freedesktop.login1",
+                "/org/freedesktop/login1",
+                "org.freedesktop.login1.Manager",
+                "CanPowerOff",
+            ])
             .output()
         {
             let s = String::from_utf8_lossy(&out.stdout);
-            if s.contains("\"yes\"") { return true; }
+            if s.contains("\"yes\"") {
+                return true;
+            }
             if s.contains("\"auth") || s.contains("\"challenge") || s.contains("\"no\"") {
                 return false;
             }
         }
         // busctl not available — fall back to uid check (root can always shutdown)
-        Command::new("id").arg("-u").output()
+        Command::new("id")
+            .arg("-u")
+            .output()
             .map(|o| String::from_utf8_lossy(&o.stdout).trim() == "0")
             .unwrap_or(false)
     }
     #[cfg(target_os = "windows")]
-    { true }
+    {
+        true
+    }
 }
 
 /// Fire a desktop notification. Non-blocking — failure is silently ignored.
@@ -32,7 +41,12 @@ pub fn notify(summary: &str, body: &str) {
     #[cfg(target_os = "linux")]
     {
         let _ = Command::new("notify-send")
-            .args(["--urgency=critical", "--app-name=xxUSBSentinel", summary, body])
+            .args([
+                "--urgency=critical",
+                "--app-name=xxUSBSentinel",
+                summary,
+                body,
+            ])
             .spawn();
     }
     #[cfg(target_os = "windows")]
@@ -41,7 +55,8 @@ pub fn notify(summary: &str, body: &str) {
         let script = format!(
             "$n=New-Object -ComObject WScript.Shell; \
              $n.Popup('{} {}',3,'xxUSBSentinel',48) | Out-Null",
-            summary.replace('\'', ""), body.replace('\'', "")
+            summary.replace('\'', ""),
+            body.replace('\'', "")
         );
         let _ = Command::new("powershell")
             .args(["-NoProfile", "-NonInteractive", "-Command", &script])
@@ -55,7 +70,9 @@ pub fn execute() {
         // /p = power off immediately (no dialog, no delay).
         // Fall back to /s /t 0 /f if /p is unavailable (pre-Win8).
         if Command::new("shutdown").args(["/p", "/f"]).spawn().is_err() {
-            let _ = Command::new("shutdown").args(["/s", "/t", "0", "/f"]).spawn();
+            let _ = Command::new("shutdown")
+                .args(["/s", "/t", "0", "/f"])
+                .spawn();
         }
     }
 

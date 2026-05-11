@@ -1,11 +1,10 @@
 /// Unified tray interface.
 /// Linux: ksni (StatusNotifierItem, works natively on KDE/GNOME/XFCE)
 /// Windows: tray-icon
-
 use std::sync::{Arc, Mutex};
 
 const ICON_OFF: &[u8] = include_bytes!("../resources/guard-off.png");
-const ICON_ON:  &[u8] = include_bytes!("../resources/guard-on.png");
+const ICON_ON: &[u8] = include_bytes!("../resources/guard-on.png");
 
 pub enum TrayEvent {
     ShowWindow,
@@ -15,14 +14,14 @@ pub enum TrayEvent {
 }
 
 pub struct TrayState {
-    pub armed:             bool,
-    pub has_key_device:    bool,
-    pub test_mode:         bool,
+    pub armed: bool,
+    pub has_key_device: bool,
+    pub test_mode: bool,
     pub shutdown_on_close: bool,
 }
 
 pub struct AppTray {
-    state:    Arc<Mutex<TrayState>>,
+    state: Arc<Mutex<TrayState>>,
     event_rx: std::sync::mpsc::Receiver<TrayEvent>,
     #[cfg(target_os = "linux")]
     ksni_handle: ksni::blocking::Handle<KsniTray>,
@@ -34,8 +33,10 @@ impl AppTray {
     pub fn new() -> Self {
         let (tx, rx) = std::sync::mpsc::channel::<TrayEvent>();
         let state = Arc::new(Mutex::new(TrayState {
-            armed: false, has_key_device: false,
-            test_mode: false, shutdown_on_close: false,
+            armed: false,
+            has_key_device: false,
+            test_mode: false,
+            shutdown_on_close: false,
         }));
 
         #[cfg(target_os = "linux")]
@@ -54,15 +55,23 @@ impl AppTray {
         }
     }
 
-    pub fn set_state(&self, armed: bool, has_key_device: bool, test_mode: bool, shutdown_on_close: bool) {
+    pub fn set_state(
+        &self,
+        armed: bool,
+        has_key_device: bool,
+        test_mode: bool,
+        shutdown_on_close: bool,
+    ) {
         let mut s = self.state.lock().unwrap();
-        s.armed             = armed;
-        s.has_key_device    = has_key_device;
-        s.test_mode         = test_mode;
+        s.armed = armed;
+        s.has_key_device = has_key_device;
+        s.test_mode = test_mode;
         s.shutdown_on_close = shutdown_on_close;
         drop(s);
         #[cfg(target_os = "linux")]
-        { let _ = self.ksni_handle.update(|_| {}); }
+        {
+            let _ = self.ksni_handle.update(|_| {});
+        }
     }
 
     pub fn poll(&self) -> Option<TrayEvent> {
@@ -82,7 +91,7 @@ fn spawn_ksni(
         state,
         tx,
         icon_off: decode_ksni_icon(ICON_OFF),
-        icon_on:  decode_ksni_icon(ICON_ON),
+        icon_on: decode_ksni_icon(ICON_ON),
     };
     // Blocking spawn: sets up D-Bus session on this thread (via async-io block_on),
     // then moves the service event loop to its own background std::thread.
@@ -91,20 +100,28 @@ fn spawn_ksni(
 
 #[cfg(target_os = "linux")]
 struct KsniTray {
-    state:    Arc<Mutex<TrayState>>,
-    tx:       std::sync::mpsc::Sender<TrayEvent>,
+    state: Arc<Mutex<TrayState>>,
+    tx: std::sync::mpsc::Sender<TrayEvent>,
     icon_off: ksni::Icon,
-    icon_on:  ksni::Icon,
+    icon_on: ksni::Icon,
 }
 
 #[cfg(target_os = "linux")]
 impl ksni::Tray for KsniTray {
-    fn id(&self) -> String { "xxusbsentinel".into() }
-    fn title(&self) -> String { "xxUSBSentinel".into() }
+    fn id(&self) -> String {
+        "xxusbsentinel".into()
+    }
+    fn title(&self) -> String {
+        "xxUSBSentinel".into()
+    }
 
     fn icon_pixmap(&self) -> Vec<ksni::Icon> {
         let armed = self.state.lock().unwrap().armed;
-        vec![if armed { self.icon_on.clone() } else { self.icon_off.clone() }]
+        vec![if armed {
+            self.icon_on.clone()
+        } else {
+            self.icon_off.clone()
+        }]
     }
 
     fn activate(&mut self, _x: i32, _y: i32) {
@@ -118,8 +135,16 @@ impl ksni::Tray for KsniTray {
             (s.armed, s.has_key_device, s.test_mode, s.shutdown_on_close)
         };
         let arm_label = if armed { "Disarm" } else { "Arm Sentinel" };
-        let test_label = if test_mode { "✓  Test mode" } else { "    Test mode" };
-        let soc_label  = if shutdown_on_close { "✓  Shutdown on close" } else { "    Shutdown on close" };
+        let test_label = if test_mode {
+            "✓  Test mode"
+        } else {
+            "    Test mode"
+        };
+        let soc_label = if shutdown_on_close {
+            "✓  Shutdown on close"
+        } else {
+            "    Shutdown on close"
+        };
         vec![
             StandardItem {
                 label: "Show xxUSBSentinel".into(),
@@ -175,7 +200,11 @@ fn decode_ksni_icon(bytes: &[u8]) -> ksni::Icon {
         .pixels()
         .flat_map(|p| [p[3], p[0], p[1], p[2]])
         .collect();
-    ksni::Icon { width: width as i32, height: height as i32, data }
+    ksni::Icon {
+        width: width as i32,
+        height: height as i32,
+        data,
+    }
 }
 
 // ── Windows (tray-icon) ───────────────────────────────────────────────────────

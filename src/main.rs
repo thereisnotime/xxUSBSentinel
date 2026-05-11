@@ -39,5 +39,9 @@ fn load_icon() -> egui::IconData {
     let bytes = include_bytes!("../resources/guard-on.png");
     let img = image::load_from_memory(bytes).expect("icon").into_rgba8();
     let (width, height) = img.dimensions();
-    egui::IconData { rgba: img.into_raw(), width, height }
+    egui::IconData {
+        rgba: img.into_raw(),
+        width,
+        height,
+    }
 }
