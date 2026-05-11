@@ -1,1 +1,8 @@
+# Rust
 /target/
+/dist/
+
+# .NET legacy (tracked on master, not part of the Rust rewrite)
+xxUSBSentinel/
+xxUSBSentinel.sln
+packages/

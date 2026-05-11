@@ -8,12 +8,29 @@ description = "USB kill switch — shuts down the PC when a mapped USB device is
 eframe = "0.34"
 egui = "0.34"
 egui_extras = { version = "0.34", features = ["image"] }
-tray-icon = "0.21"
 arboard = "3.6"
 rusb = "0.9"
 chrono = { version = "0.4", features = ["clock"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 rfd = "0.15"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+dirs = "5.0"
+usb-ids = "1"
 
-# Linux system tray requires libgtk-3-dev + libayatana-appindicator3-dev (or libappindicator3-dev)
-# USB monitoring requires libusb-1.0-dev (build) and libusb-1.0-0 (runtime)
+# Linux: ksni with async-io backend (avoids tokio/zbus conflict with accesskit_unix)
+# Build deps: libxdo-dev libusb-1.0-0-dev
+[target.'cfg(target_os = "linux")'.dependencies]
+ksni = { version = "0.3", default-features = false, features = ["async-io", "blocking"] }
+
+# Windows: tray-icon works out of the box
+[target.'cfg(target_os = "windows")'.dependencies]
+tray-icon = "0.21"
+winreg = "0.52"
+
+[profile.release]
+opt-level     = 3
+lto           = true
+codegen-units = 1
+strip         = true
+panic         = "abort"
