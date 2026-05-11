@@ -1,5 +1,10 @@
 # xxUSBSentinel
 
+[![CI](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/ci.yml)
+[![Release](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/release.yml/badge.svg)](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/thereisnotime/xxUSBSentinel)](https://github.com/thereisnotime/xxUSBSentinel/releases/latest)
+[![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
+
 USB kill-switch for Linux and Windows. Map any USB device as a key. When it is removed while the sentinel is armed, the machine shuts down immediately. Designed to make recovering encrypted drive keys as hard as possible if someone physically seizes your machine.
 
 > **Warning:** This tool does not encrypt your data. Use full-disk encryption (LUKS, VeraCrypt, BitLocker) alongside it.
