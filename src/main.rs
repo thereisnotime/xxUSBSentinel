@@ -4,6 +4,7 @@ mod sentinel;
 mod shutdown;
 mod tray;
 mod usb;
+mod wipe;
 
 use config::Config;
 use sentinel::SharedState;

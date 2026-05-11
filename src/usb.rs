@@ -67,7 +67,17 @@ pub fn start_monitor(state: Arc<Mutex<SharedState>>, tx: mpsc::Sender<GuiEvent>)
                                 s.waiting = false;
                                 Action::Mapped(vp.clone())
                             } else if s.armed && vp == s.key_device {
-                                if s.test_mode { Action::TestTrigger } else { Action::Shutdown }
+                                if s.test_mode {
+                                    Action::TestTrigger
+                                } else {
+                                    Action::Shutdown {
+                                        wipe_swap:       s.wipe_swap,
+                                        wipe_hiberfil:   s.wipe_hiberfil,
+                                        fake_bsod:       s.fake_bsod,
+                                        bsod_style:      s.bsod_style.clone(),
+                                        bsod_delay_secs: s.bsod_delay_secs,
+                                    }
+                                }
                             } else {
                                 Action::None
                             }
@@ -82,12 +92,18 @@ pub fn start_monitor(state: Arc<Mutex<SharedState>>, tx: mpsc::Sender<GuiEvent>)
                                 );
                                 let _ = tx.send(GuiEvent::TestTriggered);
                             }
-                            Action::Shutdown => {
+                            Action::Shutdown { wipe_swap, wipe_hiberfil, fake_bsod, bsod_style, bsod_delay_secs } => {
                                 crate::shutdown::notify(
                                     "xxUSBSentinel — SHUTDOWN",
                                     "Key device removed. Shutting down now.",
                                 );
-                                shutdown::execute();
+                                let _ = tx.send(GuiEvent::ShutdownTriggered {
+                                    wipe_swap,
+                                    wipe_hiberfil,
+                                    fake_bsod,
+                                    bsod_style,
+                                    bsod_delay_secs,
+                                });
                             }
                             Action::None => {}
                         }
@@ -126,4 +142,9 @@ fn vid_pid_str(vid: u16, pid: u16) -> String {
 }
 
 
-enum Action { None, Mapped(String), TestTrigger, Shutdown }
+enum Action {
+    None,
+    Mapped(String),
+    TestTrigger,
+    Shutdown { wipe_swap: bool, wipe_hiberfil: bool, fake_bsod: bool, bsod_style: String, bsod_delay_secs: u32 },
+}

@@ -118,7 +118,7 @@ dist-linux: release
     pkg="{{bin}}-v${ver}-linux-${arch}"
     mkdir -p {{dist}}/"$pkg"
     cp target/release/{{bin}} {{dist}}/"$pkg"/
-    cp README.md {{dist}}/"$pkg"/ 2>/dev/null || true
+    cp README.md LICENSE {{dist}}/"$pkg"/ 2>/dev/null || true
     tar -czf {{dist}}/"$pkg".tar.gz -C {{dist}} "$pkg"
     rm -rf {{dist}}/"$pkg"
     echo "Package: {{dist}}/${pkg}.tar.gz"
@@ -132,3 +132,49 @@ install: release
 uninstall:
     rm -f ~/.local/bin/{{bin}}
     @echo "Removed ~/.local/bin/{{bin}}"
+
+# ── Release ───────────────────────────────────────────────────────────────────
+
+# Tag the current commit with the version from Cargo.toml and push — triggers CI release
+tag:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ver=$(cargo metadata --no-deps --format-version 1 | python3 -c "import sys,json; print(json.load(sys.stdin)['packages'][0]['version'])")
+    tag="v${ver}"
+    if git rev-parse "$tag" >/dev/null 2>&1; then
+        echo "Tag $tag already exists — bump the version first (just bump-patch / bump-minor / bump-major)"
+        exit 1
+    fi
+    git tag "$tag"
+    git push origin "$tag"
+    echo "Pushed tag $tag — CI release workflow started"
+
+# Bump patch version, commit, tag, and push — full release in one step
+release-patch: bump-patch
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ver=$(cargo metadata --no-deps --format-version 1 | python3 -c "import sys,json; print(json.load(sys.stdin)['packages'][0]['version'])")
+    git add Cargo.toml Cargo.lock
+    git commit -m "chore: bump version to ${ver}"
+    git push origin HEAD
+    just tag
+
+# Bump minor version, commit, tag, and push
+release-minor: bump-minor
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ver=$(cargo metadata --no-deps --format-version 1 | python3 -c "import sys,json; print(json.load(sys.stdin)['packages'][0]['version'])")
+    git add Cargo.toml Cargo.lock
+    git commit -m "chore: bump version to ${ver}"
+    git push origin HEAD
+    just tag
+
+# Bump major version, commit, tag, and push
+release-major: bump-major
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ver=$(cargo metadata --no-deps --format-version 1 | python3 -c "import sys,json; print(json.load(sys.stdin)['packages'][0]['version'])")
+    git add Cargo.toml Cargo.lock
+    git commit -m "chore: bump version to ${ver}"
+    git push origin HEAD
+    just tag

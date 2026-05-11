@@ -2,7 +2,7 @@ use std::sync::{mpsc, Arc, Mutex};
 
 use eframe::egui::{self, Color32, RichText, Stroke};
 
-use crate::config::{autostart_enabled, set_autostart, Config};
+use crate::config::{autostart_enabled, set_autostart, Config, Hook};
 use crate::sentinel::{GuiEvent, LogEntry, SharedState, UsbDevice};
 use crate::tray::{AppTray, TrayEvent};
 
@@ -24,8 +24,16 @@ pub struct SentinelApp {
     prev_has_key:     bool,
     prev_test_mode:   bool,
     prev_soc:         bool,
+    show_advanced:    bool,
     show_help:        bool,
     show_about:       bool,
+    hooks_buf:        Vec<Hook>,
+    // Fake BSOD overlay state
+    bsod_active:         bool,
+    bsod_style:          String,
+    bsod_shutdown_at:    Option<std::time::Instant>,
+    bsod_wipe_swap:      bool,
+    bsod_wipe_hiberfil:  bool,
 }
 
 impl SentinelApp {
@@ -46,6 +54,7 @@ impl SentinelApp {
             log: Vec::new(),
             devices: Vec::new(),
             tray: AppTray::new(),
+            hooks_buf: cfg.hooks.clone(),
             cfg,
             autostart,
             shutdown_ok,
@@ -53,8 +62,14 @@ impl SentinelApp {
             prev_has_key:    false,
             prev_test_mode:  false,
             prev_soc:        false,
-            show_help:       false,
-            show_about:      false,
+            show_advanced:       false,
+            show_help:           false,
+            show_about:          false,
+            bsod_active:         false,
+            bsod_style:          String::new(),
+            bsod_shutdown_at:    None,
+            bsod_wipe_swap:      false,
+            bsod_wipe_hiberfil:  false,
         }
     }
 }
@@ -71,6 +86,7 @@ impl eframe::App for SentinelApp {
                         let comment = self.cfg.device_comments.get(&d.vid_pid).cloned().unwrap_or_default();
                         let label = display_label(&d.vid_pid, &d.name, &comment);
                         push_log(&mut self.log, &format!("Connected: {}", label));
+                        run_hooks(&self.cfg.hooks, &d.vid_pid, &d.name, "connected");
                         self.devices.push(d);
                     }
                 }
@@ -80,6 +96,7 @@ impl eframe::App for SentinelApp {
                     let comment = self.cfg.device_comments.get(&vp).cloned().unwrap_or_default();
                     let label = display_label(&vp, &name, &comment);
                     push_log(&mut self.log, &format!("Disconnected: {}", label));
+                    run_hooks(&self.cfg.hooks, &vp, &name, "disconnected");
                     self.devices.retain(|d| d.vid_pid != vp);
                 }
                 GuiEvent::DeviceMapped(vp) => {
@@ -93,6 +110,28 @@ impl eframe::App for SentinelApp {
                 }
                 GuiEvent::TestTriggered => {
                     push_log(&mut self.log, "Test triggered — key device removed (shutdown suppressed).");
+                    let name = self.devices.iter().find(|d| d.vid_pid == self.cfg.key_device)
+                        .map(|d| d.name.clone()).unwrap_or_default();
+                    run_hooks(&self.cfg.hooks, &self.cfg.key_device, &name, "triggered");
+                }
+                GuiEvent::ShutdownTriggered { wipe_swap, wipe_hiberfil, fake_bsod, bsod_style, bsod_delay_secs } => {
+                    let name = self.devices.iter().find(|d| d.vid_pid == self.cfg.key_device)
+                        .map(|d| d.name.clone()).unwrap_or_default();
+                    run_hooks(&self.cfg.hooks, &self.cfg.key_device, &name, "triggered");
+                    if fake_bsod {
+                        self.bsod_active        = true;
+                        self.bsod_style         = bsod_style;
+                        self.bsod_wipe_swap     = wipe_swap;
+                        self.bsod_wipe_hiberfil = wipe_hiberfil;
+                        self.bsod_shutdown_at   = Some(
+                            std::time::Instant::now()
+                                + std::time::Duration::from_secs(bsod_delay_secs as u64)
+                        );
+                    } else {
+                        if wipe_swap    { crate::wipe::wipe_swap(); }
+                        if wipe_hiberfil { crate::wipe::wipe_hiberfil(); }
+                        crate::shutdown::execute();
+                    }
                 }
             }
         }
@@ -155,11 +194,60 @@ impl eframe::App for SentinelApp {
             }
         }
 
+        // Fire shutdown when fake BSOD timer expires
+        if let Some(at) = self.bsod_shutdown_at {
+            if std::time::Instant::now() >= at {
+                self.bsod_shutdown_at = None;
+                if self.bsod_wipe_swap    { crate::wipe::wipe_swap(); }
+                if self.bsod_wipe_hiberfil { crate::wipe::wipe_hiberfil(); }
+                crate::shutdown::execute();
+            }
+        }
+
         ctx.request_repaint_after(std::time::Duration::from_millis(500));
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+
+        // ── Fake BSOD overlay ─────────────────────────────────────────────
+        if self.bsod_active {
+            let img_bytes: &[u8] = match self.bsod_style.as_str() {
+                "win11" => include_bytes!("../resources/bsod-win11.png"),
+                "linux" => include_bytes!("../resources/bsod-linux.png"),
+                _       => include_bytes!("../resources/bsod-win10.png"),
+            };
+            ctx.show_viewport_immediate(
+                egui::ViewportId::from_hash_of("bsod_overlay"),
+                egui::ViewportBuilder::default()
+                    .with_fullscreen(true)
+                    .with_decorations(false)
+                    .with_always_on_top()
+                    .with_title(""),
+                |ctx, _| {
+                    egui::CentralPanel::default()
+                        .frame(egui::Frame::none())
+                        .show(ctx, |ui| {
+                            let tex = ui.ctx().load_texture(
+                                "bsod",
+                                egui::ColorImage::from_rgba_unmultiplied(
+                                    [1, 1],
+                                    &[0, 0, 0, 255],
+                                ),
+                                egui::TextureOptions::default(),
+                            );
+                            // Load via egui_extras image loader
+                            let uri = format!("bytes://bsod-{}", &self.bsod_style);
+                            drop(tex);
+                            ui.add(
+                                egui::Image::from_bytes(uri, img_bytes)
+                                    .fit_to_exact_size(ui.available_size())
+                            );
+                        });
+                },
+            );
+            return;
+        }
 
         // Close button: either minimise to tray, or shut down if armed and shutdown_on_close
         if ctx.input(|i| i.viewport().close_requested()) {
@@ -187,9 +275,10 @@ impl eframe::App for SentinelApp {
 
         if self.show_help {
             egui::Window::new("Help")
-                .collapsible(false).resizable(false).max_width(460.0)
-                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .collapsible(false).resizable(true)
+                .min_width(320.0).max_width(520.0).min_height(200.0)
                 .show(&ctx, |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.strong("Quick start");
                     ui.add_space(4.0);
                     ui.label("1. Plug in the USB device you want to use as your kill-switch key.");
@@ -225,15 +314,15 @@ impl eframe::App for SentinelApp {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.button("  Close  ").clicked() { self.show_help = false; }
                     });
+                }); // ScrollArea
                 });
         }
 
         if self.show_about {
             egui::Window::new("About")
-                .collapsible(false).resizable(false).min_width(280.0)
-                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .collapsible(false).resizable(false)
                 .show(&ctx, |ui| {
-                    ui.heading("xxUSBSentinel  v2.0");
+                    ui.heading(format!("xxUSBSentinel  v{}", env!("CARGO_PKG_VERSION")));
                     ui.add_space(4.0);
                     ui.label("USB kill-switch — shuts down the PC when the mapped key device is removed.");
                     ui.add_space(4.0);
@@ -243,6 +332,257 @@ impl eframe::App for SentinelApp {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.button("  Close  ").clicked() { self.show_about = false; }
                     });
+                });
+        }
+
+        if self.show_advanced {
+            egui::Window::new("Advanced Settings")
+                .collapsible(false).resizable(true)
+                .min_width(400.0).min_height(200.0)
+                .show(&ctx, |ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
+
+                    // ── General ───────────────────────────────────────────
+                    ui.strong("General");
+                    ui.add_space(4.0);
+                    let mut soc = shutdown_on_close;
+                    if ui.checkbox(&mut soc, "Shutdown on close")
+                        .on_hover_text("When armed, closing the window triggers shutdown instead of minimising to tray. Respects Test mode.")
+                        .changed()
+                    {
+                        self.state.lock().unwrap().shutdown_on_close = soc;
+                        self.cfg.shutdown_on_close = soc;
+                        self.cfg.save();
+                    }
+                    let mut ast = self.autostart;
+                    if ui.checkbox(&mut ast, "Autostart on login")
+                        .on_hover_text("Launch xxUSBSentinel automatically when you log in")
+                        .changed()
+                    {
+                        set_autostart(ast);
+                        self.autostart = ast;
+                    }
+
+                    ui.add_space(12.0);
+                    ui.separator();
+                    ui.add_space(8.0);
+
+                    // ── On-trigger actions ────────────────────────────────
+                    ui.strong("Actions on trigger (before shutdown)");
+                    ui.add_space(4.0);
+                    ui.label(RichText::new("These run when the key device is removed while armed. Skipped in test mode.").color(DIM).small());
+                    ui.add_space(6.0);
+
+                    let mut ws = self.cfg.wipe_swap;
+                    if ui.checkbox(&mut ws, "Disable swap / pagefile")
+                        .on_hover_text(
+                            "Linux: runs swapoff -a (flushes all swap back to RAM instantly).\n\
+                             Windows: sets ClearPageFileAtShutdown so the pagefile is zeroed during shutdown."
+                        ).changed()
+                    {
+                        self.cfg.wipe_swap = ws;
+                        self.state.lock().unwrap().wipe_swap = ws;
+                        self.cfg.save();
+                    }
+
+                    let mut wh = self.cfg.wipe_hiberfil;
+                    if ui.checkbox(&mut wh, "Remove hibernation file")
+                        .on_hover_text(
+                            "Linux: sets /sys/power/image_size to 0 and masks hibernate.target.\n\
+                             Windows: runs powercfg /h off which deletes hiberfil.sys immediately."
+                        ).changed()
+                    {
+                        self.cfg.wipe_hiberfil = wh;
+                        self.state.lock().unwrap().wipe_hiberfil = wh;
+                        self.cfg.save();
+                    }
+
+                    let mut fb = self.cfg.fake_bsod;
+                    if ui.checkbox(&mut fb, "Show fake crash screen")
+                        .on_hover_text("Displays a fullscreen BSOD / kernel panic screenshot for a few seconds before shutting down.")
+                        .changed()
+                    {
+                        self.cfg.fake_bsod = fb;
+                        self.state.lock().unwrap().fake_bsod = fb;
+                        self.cfg.save();
+                    }
+
+                    if self.cfg.fake_bsod {
+                        ui.indent("bsod_opts", |ui| {
+                            ui.horizontal(|ui| {
+                                ui.label("Style:");
+                                let styles = [("win10", "Windows 10"), ("win11", "Windows 11"), ("linux", "Linux kernel panic")];
+                                for (val, label) in styles {
+                                    if ui.selectable_label(self.cfg.bsod_style == val, label).clicked() {
+                                        self.cfg.bsod_style = val.into();
+                                        self.state.lock().unwrap().bsod_style = val.into();
+                                        self.cfg.save();
+                                    }
+                                }
+                            });
+                            ui.horizontal(|ui| {
+                                ui.label("Duration:");
+                                let mut secs = self.cfg.bsod_delay_secs as f32;
+                                if ui.add(egui::Slider::new(&mut secs, 1.0..=30.0).suffix(" s").step_by(1.0)).changed() {
+                                    self.cfg.bsod_delay_secs = secs as u32;
+                                    self.state.lock().unwrap().bsod_delay_secs = secs as u32;
+                                    self.cfg.save();
+                                }
+                            });
+                        });
+                    }
+
+                    ui.add_space(12.0);
+                    ui.separator();
+                    ui.add_space(8.0);
+
+                    // ── Script hooks ──────────────────────────────────────
+                    ui.strong("Script hooks");
+                    ui.add_space(4.0);
+                    ui.label("Add a rule to run a script or binary when a USB event fires.");
+                    ui.label(RichText::new(
+                        "Script receives three arguments:  VID:PID   device-name   event-type"
+                    ).color(DIM).small());
+                    ui.label(RichText::new(
+                        "Example:  /usr/local/bin/alert.sh 1532:0A24 \"Razer Keyboard\" connected"
+                    ).color(DIM).small().italics());
+                    ui.add_space(8.0);
+
+                    // Build the device list for the dropdowns: "Any device (*)" + known devices
+                    let device_options: Vec<(String, String)> = {
+                        let mut v = vec![("*".into(), "Any device (*)".into())];
+                        v.extend(self.devices.iter().map(|d| {
+                            let label = if d.name.is_empty() {
+                                d.vid_pid.clone()
+                            } else {
+                                format!("{} — {}", d.vid_pid, d.name)
+                            };
+                            (d.vid_pid.clone(), label)
+                        }));
+                        v
+                    };
+                    let event_options = [
+                        ("connected",    "connects (plugged in)"),
+                        ("disconnected", "disconnects (unplugged)"),
+                        ("triggered",    "triggers shutdown (key device removed)"),
+                    ];
+
+                    // Header row
+                    egui::Grid::new("hooks_header").num_columns(6).spacing([8.0, 4.0]).show(ui, |ui| {
+                        ui.label(RichText::new("On").color(DIM).small().strong());
+                        ui.label(RichText::new("Device").color(DIM).small().strong());
+                        ui.label(RichText::new("Event").color(DIM).small().strong());
+                        ui.label(RichText::new("Script / binary to run").color(DIM).small().strong());
+                        ui.label("");
+                        ui.label("");
+                        ui.end_row();
+                    });
+
+                    let mut to_delete: Option<usize> = None;
+                    egui::ScrollArea::vertical().max_height(220.0).id_salt("hooks_scroll").show(ui, |ui| {
+                        egui::Grid::new("hooks_grid").num_columns(6).spacing([8.0, 6.0]).show(ui, |ui| {
+                            for (i, hook) in self.hooks_buf.iter_mut().enumerate() {
+                                let dim = !hook.enabled;
+
+                                // Enable/disable checkbox
+                                ui.checkbox(&mut hook.enabled, "");
+
+                                // Device dropdown — locked for "triggered" (always key device)
+                                if hook.event == "triggered" {
+                                    ui.add_enabled(false,
+                                        egui::Button::new(
+                                            RichText::new("Key device (always)")
+                                                .color(if dim { DIM } else { Color32::from_rgb(200,200,210) })
+                                        ).min_size(egui::vec2(160.0, 0.0))
+                                    ).on_disabled_hover_text(
+                                        "The shutdown trigger only fires for the mapped key device — no other device can trigger it"
+                                    );
+                                } else {
+                                    ui.scope(|ui| {
+                                        ui.set_enabled(!dim);
+                                        egui::ComboBox::from_id_salt(egui::Id::new("hook_dev").with(i))
+                                            .selected_text(
+                                                device_options.iter()
+                                                    .find(|(v, _)| v == &hook.device)
+                                                    .map(|(_, l)| l.as_str())
+                                                    .unwrap_or(&hook.device)
+                                            )
+                                            .width(160.0)
+                                            .show_ui(ui, |ui| {
+                                                for (val, label) in &device_options {
+                                                    ui.selectable_value(&mut hook.device, val.clone(), label);
+                                                }
+                                            });
+                                    });
+                                }
+
+                                // Event dropdown
+                                egui::ComboBox::from_id_salt(egui::Id::new("hook_ev").with(i))
+                                    .selected_text(
+                                        event_options.iter()
+                                            .find(|(v, _)| *v == hook.event)
+                                            .map(|(_, l)| *l)
+                                            .unwrap_or(&hook.event)
+                                    )
+                                    .width(210.0)
+                                    .show_ui(ui, |ui| {
+                                        for (val, label) in &event_options {
+                                            ui.selectable_value(&mut hook.event, val.to_string(), *label);
+                                        }
+                                    });
+
+                                // Script path
+                                ui.add_enabled(!dim,
+                                    egui::TextEdit::singleline(&mut hook.script)
+                                        .desired_width(200.0)
+                                        .hint_text("path to script or binary…")
+                                );
+
+                                // Browse
+                                if ui.add_enabled(!dim, egui::Button::new("Browse").small()).clicked() {
+                                    if let Some(p) = rfd::FileDialog::new()
+                                        .set_title("Select script or binary").pick_file()
+                                    {
+                                        hook.script = p.to_string_lossy().into_owned();
+                                    }
+                                }
+
+                                // Delete row
+                                if ui.small_button(RichText::new("✕").color(RED))
+                                    .on_hover_text("Remove this rule")
+                                    .clicked()
+                                {
+                                    to_delete = Some(i);
+                                }
+
+                                ui.end_row();
+                            }
+                        });
+                    });
+
+                    if let Some(i) = to_delete { self.hooks_buf.remove(i); }
+
+                    ui.add_space(4.0);
+                    if ui.button("+ Add rule").clicked() {
+                        self.hooks_buf.push(Hook::default());
+                    }
+
+                    ui.add_space(10.0);
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button("  Cancel  ").clicked() {
+                            self.hooks_buf = self.cfg.hooks.clone();
+                            self.show_advanced = false;
+                        }
+                        if ui.button("  Save  ").clicked() {
+                            // Drop rules with empty script path
+                            self.hooks_buf.retain(|h| !h.script.trim().is_empty());
+                            self.cfg.hooks = self.hooks_buf.clone();
+                            self.cfg.save();
+                            self.show_advanced = false;
+                            push_log(&mut self.log, "Advanced settings saved.");
+                        }
+                    });
+                }); // ScrollArea
                 });
         }
 
@@ -374,27 +714,11 @@ impl eframe::App for SentinelApp {
                         self.cfg.save();
                     }
 
-                    // Shutdown on close
-                    let mut soc = shutdown_on_close;
-                    if ui.checkbox(&mut soc, RichText::new("Shutdown on close")
-                        .color(if shutdown_on_close { RED } else { DIM }))
-                        .on_hover_text("When armed, closing the window triggers shutdown instead of minimising to tray. Respects Test mode.")
-                        .changed()
+                    if ui.button(RichText::new("Advanced").color(DIM).small())
+                        .on_hover_text("Hooks, autostart, shutdown on close, and other advanced settings")
+                        .clicked()
                     {
-                        self.state.lock().unwrap().shutdown_on_close = soc;
-                        self.cfg.shutdown_on_close = soc;
-                        self.cfg.save();
-                    }
-
-                    // Autostart toggle
-                    let mut ast = self.autostart;
-                    if ui.checkbox(&mut ast, RichText::new("Autostart")
-                        .color(if self.autostart { GREEN } else { DIM }))
-                        .on_hover_text("Launch xxUSBSentinel automatically when you log in")
-                        .changed()
-                    {
-                        set_autostart(ast);
-                        self.autostart = ast;
+                        self.show_advanced = true;
                     }
 
                 });
@@ -469,16 +793,49 @@ impl eframe::App for SentinelApp {
                                             let is_key  = !key_device.is_empty() && vid_pid == key_device;
                                             let row_color = if is_key { GREEN } else { Color32::from_rgb(200, 200, 210) };
 
-                                            // VID:PID column
+                                            // VID:PID column — full device context menu
                                             let id_resp = ui.add(
                                                 egui::Label::new(RichText::new(&vid_pid).color(row_color).monospace())
                                                     .sense(egui::Sense::hover()),
                                             );
+                                            let comment_for_menu = self.cfg.device_comments
+                                                .get(&vid_pid).cloned().unwrap_or_default();
+                                            let last_event = self.log.iter().rev()
+                                                .find(|e| e.text.contains(&vid_pid))
+                                                .map(|e| format!("[{}]  {}", e.time, e.text));
+                                            let vid_only = vid_pid.split(':').next().unwrap_or("").to_string();
+                                            let pid_only = vid_pid.split(':').nth(1).unwrap_or("").to_string();
                                             id_resp.context_menu(|ui| {
+                                                ui.set_min_width(180.0);
                                                 if ui.button("Copy VID:PID").clicked() {
-                                                    if let Ok(mut cb) = arboard::Clipboard::new() {
-                                                        let _ = cb.set_text(vid_pid.clone());
+                                                    copy_to_clipboard(&vid_pid);
+                                                    ui.close();
+                                                }
+                                                if ui.button("Copy VID").clicked() {
+                                                    copy_to_clipboard(&vid_only);
+                                                    ui.close();
+                                                }
+                                                if ui.button("Copy PID").clicked() {
+                                                    copy_to_clipboard(&pid_only);
+                                                    ui.close();
+                                                }
+                                                if ui.button("Copy device info").clicked() {
+                                                    let info = display_label(&vid_pid, &name, &comment_for_menu);
+                                                    copy_to_clipboard(&info);
+                                                    ui.close();
+                                                }
+                                                if let Some(ref ev) = last_event {
+                                                    if ui.button("Copy last event").clicked() {
+                                                        copy_to_clipboard(ev);
+                                                        ui.close();
                                                     }
+                                                }
+                                                ui.separator();
+                                                if ui.button("Resolve online").clicked() {
+                                                    open_url(&format!(
+                                                        "https://devicehunt.com/view/type/usb/vendor/{}/device/{}",
+                                                        vid_only, pid_only
+                                                    ));
                                                     ui.close();
                                                 }
                                             });
@@ -685,6 +1042,25 @@ fn url_encode(s: &str) -> String {
         b' ' => vec!['+'],
         b => format!("%{:02X}", b).chars().collect(),
     }).collect()
+}
+
+fn run_hooks(hooks: &[Hook], vid_pid: &str, name: &str, event: &str) {
+    for hook in hooks {
+        if !hook.enabled { continue; }
+        if hook.script.trim().is_empty() { continue; }
+        if hook.event != event { continue; }
+        // "triggered" always matches — it only ever fires for the key device
+        if hook.event != "triggered" && hook.device != "*" && hook.device != vid_pid { continue; }
+        let _ = std::process::Command::new(hook.script.trim())
+            .args([vid_pid, name, event])
+            .spawn();
+    }
+}
+
+fn copy_to_clipboard(text: &str) {
+    if let Ok(mut cb) = arboard::Clipboard::new() {
+        let _ = cb.set_text(text.to_string());
+    }
 }
 
 fn display_label(vid_pid: &str, name: &str, comment: &str) -> String {

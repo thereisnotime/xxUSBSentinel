@@ -2,6 +2,26 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct Hook {
+    /// VID:PID to match, or "*" for any device. Ignored when event is "triggered".
+    pub device:  String,
+    /// "connected" | "disconnected" | "triggered"
+    pub event:   String,
+    /// Absolute path to the script or binary to execute.
+    pub script:  String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+}
+
+fn default_true() -> bool { true }
+
+impl Default for Hook {
+    fn default() -> Self {
+        Self { device: "*".into(), event: "connected".into(), script: String::new(), enabled: true }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct Config {
     #[serde(default)]
@@ -15,7 +35,28 @@ pub struct Config {
     /// User notes keyed by VID:PID.
     #[serde(default)]
     pub device_comments:   HashMap<String, String>,
+    /// Script hooks — each maps a device+event pair to a script/binary.
+    #[serde(default)]
+    pub hooks:             Vec<Hook>,
+    /// Disable swap / pagefile before shutdown on trigger.
+    #[serde(default)]
+    pub wipe_swap:         bool,
+    /// Remove hibernation file before shutdown on trigger.
+    #[serde(default)]
+    pub wipe_hiberfil:     bool,
+    /// Show a fake crash screen overlay before shutdown.
+    #[serde(default)]
+    pub fake_bsod:         bool,
+    /// Which crash screen: "win10", "win11", "linux"
+    #[serde(default = "default_bsod_style")]
+    pub bsod_style:        String,
+    /// Seconds to display the fake screen before shutting down.
+    #[serde(default = "default_bsod_delay")]
+    pub bsod_delay_secs:   u32,
 }
+
+fn default_bsod_style() -> String { "win10".into() }
+fn default_bsod_delay() -> u32    { 5 }
 
 impl Config {
     pub fn load() -> Self {
