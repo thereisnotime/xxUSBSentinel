@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+# Validate conventional commit format
+# Types: feat, fix, docs, style, refactor, perf, test, chore, build, ci, revert
+pattern='^(feat|fix|docs|style|refactor|perf|test|chore|build|ci|revert)(\(.+\))?(!)?: .+'
+
+msg=$(head -1 "$1")
+
+if [[ "$msg" =~ ^Merge\ |^Revert\ \"  ]]; then
+    exit 0
+fi
+
+if ! echo "$msg" | grep -qE "$pattern"; then
+    echo "Bad commit message: $msg"
+    echo ""
+    echo "Expected: <type>[optional scope]: <description>"
+    echo "Types: feat, fix, docs, style, refactor, perf, test, chore, build, ci, revert"
+    echo "Examples:"
+    echo "  feat: add arm build target"
+    echo "  fix(tray): prevent double-arm on reopen"
+    echo "  docs: update hook argument table"
+    exit 1
+fi

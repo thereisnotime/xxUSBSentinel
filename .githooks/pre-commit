@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Only run if there are staged Rust files
+if ! git diff --cached --name-only | grep -q '\.rs$'; then
+    exit 0
+fi
+
+echo "--- cargo fmt ---"
+cargo fmt -- --check
+
+echo "--- cargo check ---"
+cargo check --quiet
+
+echo "--- cargo clippy ---"
+cargo clippy --quiet -- -D warnings

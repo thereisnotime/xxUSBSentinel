@@ -10,7 +10,7 @@ default:
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 
-# Install all tool versions via asdf (.tool-versions)
+# Install all tool versions via asdf (.tool-versions) and configure git hooks
 setup:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -18,7 +18,14 @@ setup:
         asdf plugin add "$plugin" 2>/dev/null || true
     done
     asdf install
+    just hooks
     echo "Done. Restart your shell or run: asdf reshim"
+
+# Configure git to use the repo's hook scripts
+hooks:
+    git config core.hooksPath .githooks
+    chmod +x .githooks/*
+    @echo "Git hooks installed (.githooks/)"
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 

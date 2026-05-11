@@ -15,17 +15,34 @@ sudo apt install libusb-1.0-0-dev libxdo-dev pkg-config \
 Install tools with [asdf](https://asdf-vm.com) (versions in `.tool-versions`):
 
 ```sh
-just setup   # installs all tools via asdf
+just setup   # installs all tools via asdf and configures git hooks
 ```
 
 Or manually:
 - [rustup](https://rustup.rs) — stable Rust toolchain
 - [just](https://github.com/casey/just) — task runner
 
+### Git hooks
+
+The repo ships commit-quality hooks in `.githooks/`. `just setup` installs them automatically. If you skipped setup, run:
+
+```sh
+just hooks
+```
+
+The pre-commit hook runs `cargo fmt --check`, `cargo check`, and `cargo clippy` on staged Rust files. The commit-msg hook enforces [conventional commits](https://www.conventionalcommits.org/):
+
+```
+<type>[optional scope]: <description>
+```
+
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `build`, `ci`, `revert`
+
 ## All just targets
 
 ```
-just setup          # install all tools via asdf (.tool-versions)
+just setup          # install all tools via asdf (.tool-versions) and configure git hooks
+just hooks          # configure git to use .githooks/ (run once after cloning)
 
 # Build
 just build          # debug build
