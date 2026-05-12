@@ -51,10 +51,12 @@ jobs:
           echo "ASSET_NAME=${PKG}.tar.gz" >> "$GITHUB_ENV"
 
       - name: Build AppImage
+        continue-on-error: true
         env:
           APPIMAGE_EXTRACT_AND_RUN: "1"
           DEPLOY_GTK_VERSION: "3"
         run: |
+          set -x
           # Ubuntu 24.04 restricts user namespaces via AppArmor; AppImages need this relaxed
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
@@ -88,6 +90,7 @@ jobs:
             "${{ env.ASSET }}"
 
       - name: Sign AppImage with cosign (keyless)
+        if: env.APPIMAGE != ''
         run: |
           cosign sign-blob --yes \
             --bundle "${APPIMAGE_NAME}.bundle" \
@@ -99,6 +102,7 @@ jobs:
           subject-path: ${{ env.ASSET }}
 
       - name: Attest AppImage provenance
+        if: env.APPIMAGE != ''
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
           subject-path: ${{ env.APPIMAGE }}
@@ -110,8 +114,6 @@ jobs:
           path: |
             ${{ env.ASSET }}
             ${{ env.ASSET_NAME }}.bundle
-            ${{ env.APPIMAGE }}
-            ${{ env.APPIMAGE_NAME }}.bundle
 
   build-windows:
     name: Build Windows (binary + Chocolatey)
