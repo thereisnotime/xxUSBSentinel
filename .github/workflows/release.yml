@@ -62,9 +62,10 @@ jobs:
           ARCH="$(uname -m)"
           APPIMAGE_NAME="xxusbsentinel-${VERSION}-linux-${ARCH}.AppImage"
 
-          wget -q "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
-          wget -q "https://github.com/linuxdeploy/linuxdeploy-plugin-gtk/releases/download/continuous/linuxdeploy-plugin-gtk-x86_64.AppImage"
-          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-gtk-x86_64.AppImage
+          # linuxdeploy is an AppImage; the GTK plugin is a shell script (no AppImage release)
+          curl -fsSL "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" -o linuxdeploy-x86_64.AppImage
+          curl -fsSL "https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh" -o linuxdeploy-plugin-gtk
+          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-gtk
 
           export OUTPUT="${APPIMAGE_NAME}"
           ./linuxdeploy-x86_64.AppImage \
