@@ -35,6 +35,10 @@ pub struct SentinelApp {
     bsod_wipe_swap: bool,
     bsod_wipe_hiberfil: bool,
     bsod_preview_until: Option<std::time::Instant>,
+    // Track whether the main window is currently hidden (minimised to tray).
+    // show_viewport_immediate() panics when called from a hidden parent viewport,
+    // so we must make the window visible before activating any BSOD overlay.
+    window_hidden: bool,
 }
 
 impl SentinelApp {
@@ -72,6 +76,18 @@ impl SentinelApp {
             bsod_wipe_swap: false,
             bsod_wipe_hiberfil: false,
             bsod_preview_until: None,
+            window_hidden: false,
+        }
+    }
+
+    /// Ensure the main window is visible. Must be called before activating any
+    /// BSOD overlay: `show_viewport_immediate` panics when the parent viewport
+    /// is hidden.
+    fn ensure_visible(&mut self, ctx: &egui::Context) {
+        if self.window_hidden {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+            self.window_hidden = false;
         }
     }
 }
@@ -145,6 +161,7 @@ impl eframe::App for SentinelApp {
                         .unwrap_or_default();
                     run_hooks(&self.cfg.hooks, &self.cfg.key_device, &name, "triggered");
                     if self.cfg.fake_bsod {
+                        self.ensure_visible(ctx);
                         self.bsod_preview_until = Some(
                             std::time::Instant::now()
                                 + std::time::Duration::from_secs(3),
@@ -165,6 +182,7 @@ impl eframe::App for SentinelApp {
                         .unwrap_or_default();
                     run_hooks(&self.cfg.hooks, &self.cfg.key_device, &name, "triggered");
                     if fake_bsod {
+                        self.ensure_visible(ctx);
                         self.bsod_active = true;
                         self.bsod_style = bsod_style;
                         self.bsod_wipe_swap = wipe_swap;
@@ -215,6 +233,7 @@ impl eframe::App for SentinelApp {
                     ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
                         egui::UserAttentionType::Informational,
                     ));
+                    self.window_hidden = false;
                 }
                 TrayEvent::ToggleArm => {
                     let mut s = self.state.lock().unwrap();
@@ -297,6 +316,12 @@ impl eframe::App for SentinelApp {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        // Skip all rendering while the window is hidden (minimised to tray).
+        // show_viewport_immediate() panics when the parent viewport is not visible.
+        if self.window_hidden {
+            return;
+        }
+
         let ctx = ui.ctx().clone();
 
         // ── Fake BSOD overlay (real trigger or preview) ───────────────────
@@ -353,6 +378,7 @@ impl eframe::App for SentinelApp {
             }
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+            self.window_hidden = true;
         }
 
         let (armed, test_mode, waiting, key_device, shutdown_on_close) = {
