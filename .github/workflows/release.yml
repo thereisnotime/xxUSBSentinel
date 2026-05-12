@@ -55,6 +55,9 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
           DEPLOY_GTK_VERSION: "3"
         run: |
+          # Ubuntu 24.04 restricts user namespaces via AppArmor; AppImages need this relaxed
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
           VERSION="${GITHUB_REF_NAME}"
           ARCH="$(uname -m)"
           APPIMAGE_NAME="xxusbsentinel-${VERSION}-linux-${ARCH}.AppImage"

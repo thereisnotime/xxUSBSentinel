@@ -10,6 +10,7 @@ jobs:
   badge:
     name: Generate OpenSpec badges
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       contents: write
     steps:
