@@ -80,21 +80,21 @@ jobs:
           echo "APPIMAGE=dist/${APPIMAGE_NAME}" >> "$GITHUB_ENV"
           echo "APPIMAGE_NAME=${APPIMAGE_NAME}" >> "$GITHUB_ENV"
 
-      - name: Sign tar.gz with cosign (keyless)
+      - name: Sign binary with cosign (keyless)
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
       - run: |
           cosign sign-blob --yes \
-            --bundle "${ASSET_NAME}.bundle" \
+            --bundle "dist/${ASSET_NAME}.bundle" \
             "${{ env.ASSET }}"
 
       - name: Sign AppImage with cosign (keyless)
         if: env.APPIMAGE != ''
         run: |
           cosign sign-blob --yes \
-            --bundle "${APPIMAGE_NAME}.bundle" \
+            --bundle "dist/${APPIMAGE_NAME}.bundle" \
             "${{ env.APPIMAGE }}"
 
-      - name: Attest tar.gz provenance
+      - name: Attest binary provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
         with:
           subject-path: ${{ env.ASSET }}
@@ -109,9 +109,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-binary
-          path: |
-            ${{ env.ASSET }}
-            ${{ env.ASSET_NAME }}.bundle
+          path: dist/
 
   build-windows:
     name: Build Windows (binary + Chocolatey)
@@ -163,8 +161,10 @@ jobs:
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
       - shell: bash
         run: |
+          # Strip .exe suffix so the bundle is named xxusbsentinel-vX-windows-x86_64.bundle
+          BUNDLE_STEM="${ASSET_NAME%.exe}"
           cosign sign-blob --yes \
-            --bundle "${ASSET_NAME}.bundle" \
+            --bundle "dist/${BUNDLE_STEM}.bundle" \
             "${{ env.ASSET }}"
 
       - name: Attest build provenance
@@ -176,10 +176,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: windows-binary
-          path: |
-            ${{ env.ASSET }}
-            ${{ env.ASSET_NAME }}.bundle
-            ${{ env.NUPKG }}
+          path: dist/
 
   release:
     name: Create GitHub release
