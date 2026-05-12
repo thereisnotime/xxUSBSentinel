@@ -5151,7 +5151,7 @@ checksum = "3ae8337f8a065cfc972643663ea4279e04e7256de865aa66fe25cec5fb912d3f"
 
 [[package]]
 name = "xxusbsentinel"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "arboard",
  "chrono",
@@ -5167,6 +5167,7 @@ dependencies = [
  "toml 1.1.2+spec-1.1.0",
  "tray-icon",
  "usb-ids",
+ "windows-sys 0.59.0",
  "winreg",
 ]
 
