@@ -16,6 +16,31 @@ use config::Config;
 use sentinel::SharedState;
 
 fn main() {
+    // Enforce single instance on Windows via a named kernel mutex.
+    #[cfg(target_os = "windows")]
+    {
+        use std::ffi::OsStr;
+        use std::iter::once;
+        use std::os::windows::ffi::OsStrExt;
+        let name: Vec<u16> = OsStr::new("Local\\xxUSBSentinel_SingleInstance")
+            .encode_wide()
+            .chain(once(0u16))
+            .collect();
+        // SAFETY: null-terminated wide string; NULL security attrs/owner are fine.
+        let handle = unsafe {
+            windows_sys::Win32::System::Threading::CreateMutexW(
+                std::ptr::null(),
+                0,
+                name.as_ptr(),
+            )
+        };
+        let last_err = unsafe { windows_sys::Win32::Foundation::GetLastError() };
+        if last_err == windows_sys::Win32::Foundation::ERROR_ALREADY_EXISTS {
+            std::process::exit(0);
+        }
+        std::mem::forget(handle);
+    }
+
     let cfg = Config::load();
 
     let state = SharedState::new_from_config(&cfg);

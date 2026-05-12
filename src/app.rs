@@ -144,6 +144,12 @@ impl eframe::App for SentinelApp {
                         .map(|d| d.name.clone())
                         .unwrap_or_default();
                     run_hooks(&self.cfg.hooks, &self.cfg.key_device, &name, "triggered");
+                    if self.cfg.fake_bsod {
+                        self.bsod_preview_until = Some(
+                            std::time::Instant::now()
+                                + std::time::Duration::from_secs(3),
+                        );
+                    }
                 }
                 GuiEvent::ShutdownTriggered {
                     wipe_swap,
@@ -281,7 +287,13 @@ impl eframe::App for SentinelApp {
             }
         }
 
-        ctx.request_repaint_after(std::time::Duration::from_millis(500));
+        // Repaint frequently while the test-BSOD preview is counting down,
+        // otherwise use a relaxed 500 ms tick so we don't burn CPU at idle.
+        if self.bsod_preview_until.is_some() {
+            ctx.request_repaint_after(std::time::Duration::from_millis(50));
+        } else {
+            ctx.request_repaint_after(std::time::Duration::from_millis(500));
+        }
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {

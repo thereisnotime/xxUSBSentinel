@@ -1,4 +1,9 @@
 use std::process::Command;
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 /// Returns true if the current user has permission to power off the system.
 pub fn can_shutdown() -> bool {
@@ -51,7 +56,6 @@ pub fn notify(summary: &str, body: &str) {
     }
     #[cfg(target_os = "windows")]
     {
-        // PowerShell toast via BurntToast or the built-in WScript shell balloon
         let script = format!(
             "$n=New-Object -ComObject WScript.Shell; \
              $n.Popup('{} {}',3,'xxUSBSentinel',48) | Out-Null",
@@ -60,6 +64,7 @@ pub fn notify(summary: &str, body: &str) {
         );
         let _ = Command::new("powershell")
             .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+            .creation_flags(CREATE_NO_WINDOW)
             .spawn();
     }
 }
@@ -84,11 +89,15 @@ mod tests {
 pub fn execute() {
     #[cfg(target_os = "windows")]
     {
-        // /p = power off immediately (no dialog, no delay).
-        // Fall back to /s /t 0 /f if /p is unavailable (pre-Win8).
-        if Command::new("shutdown").args(["/p", "/f"]).spawn().is_err() {
+        if Command::new("shutdown")
+            .args(["/p", "/f"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+            .is_err()
+        {
             let _ = Command::new("shutdown")
                 .args(["/s", "/t", "0", "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
                 .spawn();
         }
     }

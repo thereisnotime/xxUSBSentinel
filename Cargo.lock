@@ -5177,6 +5177,7 @@ dependencies = [
  "toml 1.1.2+spec-1.1.0",
  "tray-icon",
  "usb-ids",
+ "windows-sys 0.52.0",
  "winreg",
 ]
 
