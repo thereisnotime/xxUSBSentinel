@@ -316,9 +316,16 @@ impl eframe::App for SentinelApp {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        // Skip all rendering while the window is hidden (minimised to tray).
-        // show_viewport_immediate() panics when the parent viewport is not visible.
+        // While the window is hidden (minimised to tray) we must still draw a
+        // CentralPanel — eframe treats a frame with no panel drawn as "done"
+        // and exits the process. We also cancel any OS close event so the tray
+        // keeps running.
         if self.window_hidden {
+            let ctx = ui.ctx().clone();
+            if ctx.input(|i| i.viewport().close_requested()) {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            }
+            egui::CentralPanel::default().show_inside(ui, |_| {});
             return;
         }
 

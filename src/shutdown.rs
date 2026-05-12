@@ -56,9 +56,18 @@ pub fn notify(summary: &str, body: &str) {
     }
     #[cfg(target_os = "windows")]
     {
+        // Use the WinRT toast API so the notification appears in the Action
+        // Center rather than as a blocking WScript modal dialog.
         let script = format!(
-            "$n=New-Object -ComObject WScript.Shell; \
-             $n.Popup('{} {}',3,'xxUSBSentinel',48) | Out-Null",
+            "[void][Windows.UI.Notifications.ToastNotificationManager,\
+Windows.UI.Notifications,ContentType=WindowsRuntime]; \
+[void][Windows.Data.Xml.Dom.XmlDocument,Windows.Data.Xml.Dom.XmlDocument,ContentType=WindowsRuntime]; \
+$x=[Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent(\
+[Windows.UI.Notifications.ToastTemplateType]::ToastText02); \
+$x.GetElementsByTagName('text').Item(0).AppendChild($x.CreateTextNode('{}')) | Out-Null; \
+$x.GetElementsByTagName('text').Item(1).AppendChild($x.CreateTextNode('{}')) | Out-Null; \
+[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('xxUSBSentinel')\
+.Show([Windows.UI.Notifications.ToastNotification]::new($x))",
             summary.replace('\'', ""),
             body.replace('\'', "")
         );

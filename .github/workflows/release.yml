@@ -67,12 +67,16 @@ jobs:
           curl -fsSL "https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh" -o linuxdeploy-plugin-gtk
           chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-gtk
 
+          # linuxdeploy names the installed icon after the source file's basename,
+          # which must match the Icon= entry in the desktop file.
+          cp resources/guard-on.png resources/xxusbsentinel.png
+
           export OUTPUT="${APPIMAGE_NAME}"
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
             --executable target/release/xxusbsentinel \
             --desktop-file packaging/appimage/xxusbsentinel.desktop \
-            --icon-file resources/guard-on.png \
+            --icon-file resources/xxusbsentinel.png \
             --plugin gtk \
             --output appimage
 
