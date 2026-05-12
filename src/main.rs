@@ -1,3 +1,9 @@
+// On Windows, prevent the OS from allocating a console window when the binary
+// is launched.  Without this attribute, double-clicking the .exe (or having it
+// run at startup) opens a black CMD window whose closure immediately kills the
+// process.
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+
 mod app;
 mod config;
 mod sentinel;
@@ -10,6 +16,37 @@ use config::Config;
 use sentinel::SharedState;
 
 fn main() {
+    // On Windows, enforce single-instance via a named kernel mutex.
+    // CreateMutexW succeeds even when the name is already taken, but
+    // GetLastError returns ERROR_ALREADY_EXISTS (183) in that case.
+    #[cfg(target_os = "windows")]
+    {
+        use std::ffi::OsStr;
+        use std::iter::once;
+        use std::os::windows::ffi::OsStrExt;
+
+        let name: Vec<u16> = OsStr::new("Local\\xxUSBSentinel_SingleInstance")
+            .encode_wide()
+            .chain(once(0u16))
+            .collect();
+        // SAFETY: name is a valid null-terminated wide string; NULL attrs/owner are fine.
+        let handle = unsafe {
+            windows_sys::Win32::System::Threading::CreateMutexW(
+                std::ptr::null(),
+                0,
+                name.as_ptr(),
+            )
+        };
+        let last_err = unsafe { windows_sys::Win32::Foundation::GetLastError() };
+        if last_err == windows_sys::Win32::Foundation::ERROR_ALREADY_EXISTS {
+            // Another instance is already running — exit silently.
+            std::process::exit(0);
+        }
+        // Intentionally leak the handle so it stays open (and the mutex stays
+        // "owned by this process") for the entire lifetime of the app.
+        std::mem::forget(handle);
+    }
+
     let cfg = Config::load();
 
     let state = SharedState::new_from_config(&cfg);
