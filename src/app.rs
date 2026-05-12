@@ -39,6 +39,11 @@ pub struct SentinelApp {
     // show_viewport_immediate() panics when called from a hidden parent viewport,
     // so we must make the window visible before activating any BSOD overlay.
     window_hidden: bool,
+    // True for one frame after ensure_visible() transitions the window from
+    // hidden to visible. ViewportCommand::Visible(true) is processed between
+    // frames, so show_viewport_immediate() would still panic in the same frame
+    // the command was sent. Skipping one frame gives the runtime time to unhide.
+    bsod_skip_one_frame: bool,
 }
 
 impl SentinelApp {
@@ -77,6 +82,7 @@ impl SentinelApp {
             bsod_wipe_hiberfil: false,
             bsod_preview_until: None,
             window_hidden: false,
+            bsod_skip_one_frame: false,
         }
     }
 
@@ -88,12 +94,23 @@ impl SentinelApp {
             ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
             self.window_hidden = false;
+            // ViewportCommand::Visible(true) is queued and processed between
+            // frames. Skip BSOD rendering for this one frame so
+            // show_viewport_immediate() isn't called while the viewport is
+            // still physically hidden.
+            self.bsod_skip_one_frame = true;
         }
     }
 }
 
 impl eframe::App for SentinelApp {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Cancel any OS close event while hidden so the tray process stays alive.
+        // This also runs when eframe skips calling ui() for hidden windows.
+        if self.window_hidden && ctx.input(|i| i.viewport().close_requested()) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+        }
+
         // Drain USB events
         while let Ok(event) = self.rx.try_recv() {
             match event {
@@ -333,6 +350,14 @@ impl eframe::App for SentinelApp {
 
         // ── Fake BSOD overlay (real trigger or preview) ───────────────────
         if self.bsod_active || self.bsod_preview_until.is_some() {
+            // Skip rendering for one frame when the window was just revealed so
+            // the Visible(true) command has time to be processed before we call
+            // show_viewport_immediate() — calling it on a still-hidden viewport panics.
+            if self.bsod_skip_one_frame {
+                self.bsod_skip_one_frame = false;
+                egui::CentralPanel::default().show_inside(ui, |_| {});
+                return;
+            }
             let style = if self.bsod_active {
                 self.bsod_style.as_str()
             } else {
