@@ -27,10 +27,6 @@ ksni = { version = "0.3", default-features = false, features = ["async-io", "blo
 [target.'cfg(target_os = "windows")'.dependencies]
 tray-icon = "0.24"
 winreg = "0.56"
-windows-sys = { version = "0.59", features = [
-    "Win32_Foundation",
-    "Win32_System_Threading",
-] }
 
 [profile.release]
 opt-level     = 3

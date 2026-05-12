@@ -38,17 +38,15 @@ jobs:
       - name: Build release
         run: cargo build --release
 
-      - name: Package tar.gz
+      - name: Stage binary
         run: |
           VERSION="${GITHUB_REF_NAME}"
           ARCH="$(uname -m)"
-          PKG="xxusbsentinel-${VERSION}-linux-${ARCH}"
-          mkdir -p "dist/${PKG}"
-          cp target/release/xxusbsentinel "dist/${PKG}/"
-          cp README.md LICENSE "dist/${PKG}/" 2>/dev/null || true
-          tar -czf "dist/${PKG}.tar.gz" -C dist "${PKG}"
-          echo "ASSET=dist/${PKG}.tar.gz" >> "$GITHUB_ENV"
-          echo "ASSET_NAME=${PKG}.tar.gz" >> "$GITHUB_ENV"
+          BINARY_NAME="xxusbsentinel-${VERSION}-linux-${ARCH}"
+          mkdir -p dist
+          cp target/release/xxusbsentinel "dist/${BINARY_NAME}"
+          echo "ASSET=dist/${BINARY_NAME}" >> "$GITHUB_ENV"
+          echo "ASSET_NAME=${BINARY_NAME}" >> "$GITHUB_ENV"
 
       - name: Build AppImage
         continue-on-error: true
@@ -132,26 +130,22 @@ jobs:
       - name: Build release
         run: cargo build --release
 
-      - name: Package zip
+      - name: Stage binary
         shell: pwsh
         run: |
           $VERSION = $env:GITHUB_REF_NAME
-          $PKG = "xxusbsentinel-$VERSION-windows-x86_64"
-          New-Item -ItemType Directory -Force -Path "dist\$PKG"
-          Copy-Item "target\release\xxusbsentinel.exe" "dist\$PKG\"
-          Copy-Item "README.md","LICENSE" "dist\$PKG\" -ErrorAction SilentlyContinue
-          Compress-Archive -Path "dist\$PKG" -DestinationPath "dist\$PKG.zip"
-          echo "ASSET=dist/$PKG.zip" >> $env:GITHUB_ENV
-          echo "ASSET_NAME=$PKG.zip" >> $env:GITHUB_ENV
+          $BINARY_NAME = "xxusbsentinel-$VERSION-windows-x86_64.exe"
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item "target\release\xxusbsentinel.exe" "dist\$BINARY_NAME"
+          echo "ASSET=dist/$BINARY_NAME" >> $env:GITHUB_ENV
+          echo "ASSET_NAME=$BINARY_NAME" >> $env:GITHUB_ENV
 
       - name: Build Chocolatey package
         shell: pwsh
         run: |
           $VERSION = $env:GITHUB_REF_NAME -replace '^v',''
-          $ZIP = $env:ASSET
 
-          # Compute SHA256 of the zip
-          $hash = (Get-FileHash $ZIP -Algorithm SHA256).Hash.ToUpper()
+          $hash = (Get-FileHash $env:ASSET -Algorithm SHA256).Hash.ToUpper()
 
           # Inject checksum into install script
           (Get-Content packaging\chocolatey\tools\chocolateyInstall.ps1) `
@@ -205,7 +199,7 @@ jobs:
       - name: Generate checksums
         run: |
           cd dist
-          sha256sum ./*.tar.gz ./*.AppImage ./*.zip ./*.nupkg 2>/dev/null | tee checksums.sha256
+          sha256sum ./* 2>/dev/null | grep -v checksums | tee checksums.sha256
 
       - name: Create release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
@@ -250,5 +244,5 @@ jobs:
         uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e # v2
         with:
           identifier: thereisnotime.xxUSBSentinel
-          installers-regex: 'windows-x86_64\.zip$'
+          installers-regex: 'windows-x86_64\.exe$'
           token: ${{ secrets.WINGET_TOKEN }}

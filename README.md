@@ -84,20 +84,22 @@ just install   # builds release and copies to ~/.local/bin
 ### Linux — download latest binary
 
 ```sh
-curl -fsSL https://github.com/thereisnotime/xxUSBSentinel/releases/latest/download/xxusbsentinel-$(curl -fsSL https://api.github.com/repos/thereisnotime/xxUSBSentinel/releases/latest | grep -o '"tag_name":"[^"]*"' | cut -d'"' -f4)-linux-x86_64.tar.gz | tar -xz --strip-components=1 -C ~/.local/bin xxusbsentinel-*/xxusbsentinel
+TAG=$(curl -fsSL https://api.github.com/repos/thereisnotime/xxUSBSentinel/releases/latest | grep -o '"tag_name":"[^"]*"' | cut -d'"' -f4)
+curl -fsSL "https://github.com/thereisnotime/xxUSBSentinel/releases/download/${TAG}/xxusbsentinel-${TAG}-linux-x86_64" -o ~/.local/bin/xxusbsentinel
+chmod +x ~/.local/bin/xxusbsentinel
 ```
 
-Or grab the tarball manually from the [Releases](https://github.com/thereisnotime/xxUSBSentinel/releases/latest) page.
+Or grab the binary directly from the [Releases](https://github.com/thereisnotime/xxUSBSentinel/releases/latest) page.
 
 ### Windows — download binary
 
-Download `xxusbsentinel-vX.Y.Z-windows-x86_64.zip` from the [Releases](https://github.com/thereisnotime/xxUSBSentinel/releases/latest) page, extract, and run `xxusbsentinel.exe`.
+Download `xxusbsentinel-vX.Y.Z-windows-x86_64.exe` from the [Releases](https://github.com/thereisnotime/xxUSBSentinel/releases/latest) page and run it directly — no extraction needed.
 
 **PowerShell one-liner:**
 ```powershell
 $tag = (Invoke-RestMethod https://api.github.com/repos/thereisnotime/xxUSBSentinel/releases/latest).tag_name
-Invoke-WebRequest "https://github.com/thereisnotime/xxUSBSentinel/releases/download/$tag/xxusbsentinel-$tag-windows-x86_64.zip" -OutFile xxusbsentinel.zip
-Expand-Archive xxusbsentinel.zip -DestinationPath .
+Invoke-WebRequest "https://github.com/thereisnotime/xxUSBSentinel/releases/download/$tag/xxusbsentinel-$tag-windows-x86_64.exe" -OutFile xxusbsentinel.exe
+.\xxusbsentinel.exe
 ```
 
 **Package managers** — Chocolatey and WinGet support coming soon.
