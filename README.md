@@ -1,10 +1,16 @@
 # xxUSBSentinel
 
-| | |
+| Pipeline | Status |
 |---|---|
-| **Build & Release** | [![CI](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/ci.yml) [![Release](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/release.yml/badge.svg)](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/release.yml) [![Latest release](https://img.shields.io/github/v/release/thereisnotime/xxUSBSentinel)](https://github.com/thereisnotime/xxUSBSentinel/releases/latest) [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE) [![Chocolatey](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/publish-chocolatey.yml/badge.svg)](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/publish-chocolatey.yml) [![WinGet](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/publish-winget.yml/badge.svg)](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/publish-winget.yml) |
+| **CI** | [![CI](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/ci.yml) |
+| **Release** | [![Release](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/release.yml/badge.svg)](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/release.yml) [![Latest release](https://img.shields.io/github/v/release/thereisnotime/xxUSBSentinel)](https://github.com/thereisnotime/xxUSBSentinel/releases/latest) |
+| **Chocolatey** | [![Chocolatey](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/publish-chocolatey.yml/badge.svg)](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/publish-chocolatey.yml) |
+| **WinGet** | [![WinGet](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/publish-winget.yml/badge.svg)](https://github.com/thereisnotime/xxUSBSentinel/actions/workflows/publish-winget.yml) |
+
+| Info | |
+|---|---|
 | **Quality** | [![codecov](https://codecov.io/gh/thereisnotime/xxUSBSentinel/branch/master/graph/badge.svg)](https://codecov.io/gh/thereisnotime/xxUSBSentinel) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/thereisnotime/xxUSBSentinel/badge)](https://scorecard.dev/viewer/?uri=github.com/thereisnotime/xxUSBSentinel) [![deps.rs](https://deps.rs/repo/github/thereisnotime/xxUSBSentinel/status.svg)](https://deps.rs/repo/github/thereisnotime/xxUSBSentinel) |
-| **Spec** | [![Specs](https://raw.githubusercontent.com/thereisnotime/xxUSBSentinel/gh-pages/badges/number_of_specs.svg)](https://github.com/thereisnotime/xxUSBSentinel) [![Requirements](https://raw.githubusercontent.com/thereisnotime/xxUSBSentinel/gh-pages/badges/number_of_requirements.svg)](https://github.com/thereisnotime/xxUSBSentinel) [![Open changes](https://raw.githubusercontent.com/thereisnotime/xxUSBSentinel/gh-pages/badges/open_changes.svg)](https://github.com/thereisnotime/xxUSBSentinel) [![Task status](https://raw.githubusercontent.com/thereisnotime/xxUSBSentinel/gh-pages/badges/tasks_status.svg)](https://github.com/thereisnotime/xxUSBSentinel) |
+| **License** | [![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE) |
 | **Stack** | ![Rust](https://img.shields.io/badge/Rust-000000?style=flat&logo=rust&logoColor=white) ![Linux](https://img.shields.io/badge/Linux-FCC624?style=flat&logo=linux&logoColor=black) ![Windows](https://img.shields.io/badge/Windows-0078D6?style=flat&logo=windows&logoColor=white) |
 
 
