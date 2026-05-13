@@ -1,0 +1,28 @@
+name: Publish to WinGet
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions: read-all
+
+jobs:
+  publish:
+    name: Submit manifest to winget-pkgs
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+    steps:
+      - name: Publish to WinGet
+        if: env.WINGET_TOKEN != ''
+        uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e # v2
+        with:
+          identifier: thereisnotime.xxUSBSentinel
+          installers-regex: 'windows-x86_64\.exe$'
+          release-tag: ${{ github.event.workflow_run.head_branch }}
+          token: ${{ secrets.WINGET_TOKEN }}
