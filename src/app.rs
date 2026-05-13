@@ -179,10 +179,8 @@ impl eframe::App for SentinelApp {
                     run_hooks(&self.cfg.hooks, &self.cfg.key_device, &name, "triggered");
                     if self.cfg.fake_bsod {
                         self.ensure_visible(ctx);
-                        self.bsod_preview_until = Some(
-                            std::time::Instant::now()
-                                + std::time::Duration::from_secs(3),
-                        );
+                        self.bsod_preview_until =
+                            Some(std::time::Instant::now() + std::time::Duration::from_secs(3));
                     }
                 }
                 GuiEvent::ShutdownTriggered {

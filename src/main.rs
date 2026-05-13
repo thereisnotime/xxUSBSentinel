@@ -28,11 +28,7 @@ fn main() {
             .collect();
         // SAFETY: null-terminated wide string; NULL security attrs/owner are fine.
         let handle = unsafe {
-            windows_sys::Win32::System::Threading::CreateMutexW(
-                std::ptr::null(),
-                0,
-                name.as_ptr(),
-            )
+            windows_sys::Win32::System::Threading::CreateMutexW(std::ptr::null(), 0, name.as_ptr())
         };
         let last_err = unsafe { windows_sys::Win32::Foundation::GetLastError() };
         if last_err == windows_sys::Win32::Foundation::ERROR_ALREADY_EXISTS {

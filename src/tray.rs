@@ -331,13 +331,7 @@ fn spawn_windows_tray(
     let sep2 = PredefinedMenuItem::separator();
     let item_exit = MenuItem::with_id("exit", "Exit", true, None);
     let _ = menu.append_items(&[
-        &item_show,
-        &sep1,
-        &item_arm,
-        &item_test,
-        &item_soc,
-        &sep2,
-        &item_exit,
+        &item_show, &sep1, &item_arm, &item_test, &item_soc, &sep2, &item_exit,
     ]);
 
     let tray = tray_icon::TrayIconBuilder::new()
