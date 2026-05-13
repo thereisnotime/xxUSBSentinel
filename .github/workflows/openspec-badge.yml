@@ -3,6 +3,11 @@ name: OpenSpec Badge
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'Screenshots/**'
+      - 'LICENSE'
 
 permissions: read-all
 
