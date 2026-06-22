@@ -36,7 +36,7 @@ jobs:
             libgtk-3-dev libxkbcommon-dev libgles2-mesa-dev \
             libwayland-dev libxrandr-dev libxi-dev libxcursor-dev
 
-      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+      - uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # stable
         with:
           toolchain: stable
           components: rustfmt, clippy
@@ -62,7 +62,7 @@ jobs:
             libgtk-3-dev libxkbcommon-dev libgles2-mesa-dev \
             libwayland-dev libxrandr-dev libxi-dev libxcursor-dev
 
-      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+      - uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # stable
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
@@ -85,7 +85,7 @@ jobs:
             libgtk-3-dev libxkbcommon-dev libgles2-mesa-dev \
             libwayland-dev libxrandr-dev libxi-dev libxcursor-dev
 
-      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+      - uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # stable
         with:
           toolchain: stable
           components: llvm-tools-preview
@@ -111,7 +111,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable
+      - uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # stable
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
